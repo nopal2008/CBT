@@ -26,15 +26,16 @@ urlpatterns = [
     path('student/exam/token/<str:token>/', views.access_exam_with_token, name='access_exam_with_token'),
     path('student/results/', views.student_results, name='student_results'),
     path('student/results/<int:session_id>/', views.student_result_detail, name='student_result_detail'),
-    path('exam/<int:exam_id>/details/', views.exam_details, name='exam_details'),
-    path('exam/<int:exam_id>/', views.exam_details, name='exam_details_short'),
+    path('exam/<int:exam_id>/details/', views.student_exam_details, name='exam_details'),
+    path('exam/<int:exam_id>/', views.student_exam_details, name='exam_details_short'),
      # Error pages
     path('exam/not-available/', views.exam_not_available, name='exam_not_available'),
     path('exam/ended/', views.exam_ended, name='exam_ended'),
     path('exam/access-denied/', views.exam_access_denied, name='exam_access_denied'),
-    # ===== TEACHER ROUTES =====
+
+    
+  # ===== TEACHER ROUTES =====
     path('teacher/dashboard/', views.teacher_dashboard, name='teacher_dashboard'),
-    path('teacher/simple-dashboard/', views.simple_teacher_dashboard, name='simple_teacher_dashboard'),
     path('teacher/questions/', views.teacher_questions, name='teacher_questions'),
     path('teacher/questions/add/', views.add_question, name='add_question'),
     path('teacher/questions/<int:question_id>/edit/', views.edit_question, name='edit_question'),
@@ -42,12 +43,12 @@ urlpatterns = [
     path('teacher/questions/bulk-upload/', views.bulk_upload_questions, name='bulk_upload_questions'),
     path('teacher/question-banks/create/', views.create_question_bank, name='create_question_bank'),
     path('teacher/question-banks/<int:bank_id>/', views.question_bank_detail, name='question_bank_detail'),
-    path('teacher/add-question/', views.add_question, name='add_question'),
-    path('questions/bulk-upload/', views.bulk_upload_questions, name='bulk_upload_questions'),
-    path('question-banks/download-template/', views.download_question_bank_template, name='download_question_bank_template'),
-    path('download-template/', views.download_question_bank_template, name='download_question_bank_template'),
+
+# ✅ EXAM CRUD - NEW
     path('teacher/exams/create/', views.create_exam, name='create_exam'),
-    path('get-active-tokens/', views.get_active_tokens, name='get_active_tokens'),
+    path('teacher/exams/<int:exam_id>/', views.exam_detail, name='exam_detail'),
+    path('teacher/exams/<int:exam_id>/edit/', views.edit_exam, name='edit_exam'),
+    path('teacher/exams/<int:exam_id>/delete/', views.delete_exam, name='delete_exam'),
 
     # ===== ADMIN ROUTES =====
     path('admin/dashboard/', views.admin_dashboard, name='admin_dashboard'),
