@@ -1,235 +1,166 @@
-<!DOCTYPE html>
-<html lang="id">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Teacher Dashboard - CBT System</title>
-    <script src="https://cdn.tailwindcss.com"></script>
-    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
-</head>
-<body class="bg-gray-50">
-    <!-- Navigation -->
-    <nav class="bg-green-600 text-white s`hadow-lg">
-        <div class="container mx-auto px-4">
-            <div class="flex justify-between items-center py-4">
-                <div class="flex items-center space-x-3">
-                    <i class="fas fa-chalkboard-teacher text-2xl"></i>
-                    <h1 class="text-xl font-bold">CBT System - Teacher</h1>
-                </div>
-                <div class="flex items-center space-x-4">
-                    <span class="bg-green-500 px-3 py-1 rounded-full text-sm">
-                        {{ user.get_full_name|default:user.username }}
-                    </span>
-                    <form method="post" action="{% url 'exam:logout' %}">
-                        {% csrf_token %}
-                        <button type="submit" class="hover:opacity-75 flex items-center space-x-2">
-                            <i class="fas fa-power-off"></i> <span>Logout</span>
-                        </button>
-                    </form>
-                </div>
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Teacher Dashboard - CBT System{% endblock %}
+
+{% block content %}
+<div class="max-w-7xl mx-auto space-y-8">
+
+    <!-- Welcome Section -->
+    <div class="bg-gradient-to-r from-green-500 to-blue-600 rounded-2xl shadow-xl p-8 text-white">
+        <div class="flex flex-col md:flex-row justify-between items-start md:items-center">
+            <div class="mb-6 md:mb-0">
+                <h1 class="text-3xl font-bold mb-2 flex items-center">
+                    <span>Welcome, Professor {{ user.get_full_name|default:user.username }}!</span>
+                    <span class="ml-3">👨‍🏫</span>
+                </h1>
+                <p class="text-green-100 text-lg">Manage your exams and track student progress.</p>
+            </div>
+            <div class="text-center bg-white bg-opacity-20 rounded-2xl p-6 backdrop-blur-sm">
+                <div class="text-4xl font-bold mb-2">{{ total_sessions }}</div>
+                <div class="text-lg">Total Students</div>
+                <div class="text-sm text-green-100">Exam Attempts</div>
             </div>
         </div>
-    </nav>
-
-    <div class="container mx-auto px-4 py-8">
-
-        <!-- Welcome -->
-        <div class="bg-gradient-to-r from-green-500 to-blue-600 rounded-2xl p-8 text-white mb-8 shadow-lg">
-            <div class="flex justify-between items-center">
-                <div>
-                    <h1 class="text-3xl font-bold mb-2">Welcome, Professor {{ user.get_full_name|default:user.username }}! 👨‍🏫</h1>
-                    <p class="text-green-100 text-lg">Manage your exams and track student progress.</p>
-                </div>
-                <div class="text-right">
-                    <div class="bg-white bg-opacity-20 rounded-lg p-4 inline-block">
-                        <p class="text-sm">Total Students</p>
-                        <p class="text-2xl font-bold">{{ total_sessions }}</p>
-                        <p class="text-xs">Exam Attempts</p>
-                    </div>
-                </div>
-            </div>
-        </div>
-
-        <!-- Stats -->
-        <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
-            <div class="bg-white rounded-2xl p-6 shadow-lg text-center">
-                <div class="w-12 h-12 bg-blue-500 rounded-lg flex items-center justify-center mx-auto mb-4">
-                    <i class="fas fa-file-alt text-white text-xl"></i>
-                </div>
-                <h3 class="text-2xl font-bold text-gray-800">{{ total_exams }}</h3>
-                <p class="text-gray-600">Total Exams</p>
-            </div>
-            <div class="bg-white rounded-2xl p-6 shadow-lg text-center">
-                <div class="w-12 h-12 bg-green-500 rounded-lg flex items-center justify-center mx-auto mb-4">
-                    <i class="fas fa-question-circle text-white text-xl"></i>
-                </div>
-                <h3 class="text-2xl font-bold text-gray-800">{{ total_questions }}</h3>
-                <p class="text-gray-600">Total Questions</p>
-            </div>
-            <div class="bg-white rounded-2xl p-6 shadow-lg text-center">
-                <div class="w-12 h-12 bg-purple-500 rounded-lg flex items-center justify-center mx-auto mb-4">
-                    <i class="fas fa-users text-white text-xl"></i>
-                </div>
-                <h3 class="text-2xl font-bold text-gray-800">{{ total_sessions }}</h3>
-                <p class="text-gray-600">Student Attempts</p>
-            </div>
-        </div>
-
-        <!-- Question Management -->
-        <div class="bg-white rounded-2xl shadow-lg p-6 mb-8">
-            <h2 class="text-2xl font-bold text-gray-800 mb-6">Question Management</h2>
-            <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
-                <a href="{% url 'exam:teacher_questions' %}" class="bg-green-600 text-white p-6 rounded-lg text-center hover:bg-green-700 transition duration-200">
-                    <i class="fas fa-question-circle text-3xl mb-4"></i>
-                    <h3 class="text-xl font-semibold mb-2">Manage Questions</h3>
-                    <p class="text-green-100">Create and organize questions</p>
-                </a>
-                <a href="{% url 'exam:add_question' %}" class="bg-blue-600 text-white p-6 rounded-lg text-center hover:bg-blue-700 transition duration-200">
-                    <i class="fas fa-plus-circle text-3xl mb-4"></i>
-                    <h3 class="text-xl font-semibold mb-2">Add Question</h3>
-                    <p class="text-blue-100">Create single question</p>
-                </a>
-                <a href="{% url 'exam:bulk_upload_questions' %}" class="bg-purple-600 text-white p-6 rounded-lg text-center hover:bg-purple-700 transition duration-200">
-                    <i class="fas fa-file-upload text-3xl mb-4"></i>
-                    <h3 class="text-xl font-semibold mb-2">Bulk Upload</h3>
-                    <p class="text-purple-100">Upload multiple questions</p>
-                </a>
-            </div>
-        </div>
-
-        <!-- My Exams -->
-       <!-- My Exams -->
-<div class="bg-white rounded-2xl shadow-lg p-6 mb-8">
-    <div class="flex justify-between items-center mb-6">
-        <h2 class="text-2xl font-bold text-gray-800">My Exams</h2>
-        <a href="{% url 'exam:create_exam' %}" class="bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 transition duration-200 font-semibold inline-flex items-center">
-            <i class="fas fa-plus mr-2"></i>Create New Exam
-        </a>
     </div>
 
-    {% if my_exams %}
-    <div class="overflow-x-auto">
-        <table class="w-full">
-            <thead>
-                <tr class="bg-gray-50 border-b">
-                    <th class="px-4 py-3 text-left text-sm font-semibold text-gray-600">Exam Title</th>
-                    <th class="px-4 py-3 text-left text-sm font-semibold text-gray-600">Subject</th>
-                    <th class="px-4 py-3 text-left text-sm font-semibold text-gray-600">Status</th>
-                    <th class="px-4 py-3 text-left text-sm font-semibold text-gray-600">Students</th>
-                    <th class="px-4 py-3 text-left text-sm font-semibold text-gray-600">Actions</th>
-                </tr>
-            </thead>
-            <tbody class="divide-y divide-gray-200">
-                {% for exam in my_exams %}
-                <tr class="hover:bg-gray-50 transition">
-                    <td class="px-4 py-4 font-semibold text-gray-800">{{ exam.title }}</td>
-                    <td class="px-4 py-4">{{ exam.subject.name|default:"General" }}</td>
-                    <td class="px-4 py-4">
-                        <span class="{% if exam.status == 'published' %}bg-green-100 text-green-800{% else %}bg-yellow-100 text-yellow-800{% endif %} px-3 py-1 rounded-full text-xs font-semibold">
-                            {{ exam.get_status_display }}
-                        </span>
-                    </td>
-                    <td class="px-4 py-4 font-semibold text-gray-800">{{ exam.examsession_set.count }}</td>
-                    <td class="px-4 py-4 flex space-x-2">
-                        <!-- Edit Button -->
-                        <a href="{% url 'exam:edit_exam' exam.id %}" 
-                           class="bg-blue-600 text-white px-3 py-1 rounded text-sm hover:bg-blue-700 transition inline-flex items-center"
-                           title="Edit Exam">
-                            <i class="fas fa-edit"></i>
-                        </a>
-                        
-                        <!-- Show/Detail Button -->
-                        <a href="{% url 'exam:exam_detail' exam.id %}" 
-                           class="bg-purple-600 text-white px-3 py-1 rounded text-sm hover:bg-purple-700 transition inline-flex items-center"
-                           title="View Details">
-                            <i class="fas fa-eye"></i>
-                        </a>
-                        
-                        <!-- Delete Button -->
-                        <button onclick="deleteExam({{ exam.id }}, '{{ exam.title|escapejs }}')" 
-                                class="bg-red-600 text-white px-3 py-1 rounded text-sm hover:bg-red-700 transition inline-flex items-center"
-                                title="Delete Exam">
-                            <i class="fas fa-trash"></i>
-                        </button>
-                    </td>
-                </tr>
-                {% endfor %}
-            </tbody>
-        </table>
+    <!-- Stats Grid -->
+    <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+        <div class="bg-white rounded-2xl p-6 shadow-lg text-center card-hover">
+            <div class="w-12 h-12 bg-blue-500 rounded-lg flex items-center justify-center mx-auto mb-4">
+                <i class="fas fa-file-alt text-white text-xl"></i>
+            </div>
+            <h3 class="text-3xl font-bold text-gray-800">{{ total_exams }}</h3>
+            <p class="text-gray-600">Total Exams</p>
+        </div>
+        
+        <div class="bg-white rounded-2xl p-6 shadow-lg text-center card-hover">
+            <div class="w-12 h-12 bg-green-500 rounded-lg flex items-center justify-center mx-auto mb-4">
+                <i class="fas fa-question-circle text-white text-xl"></i>
+            </div>
+            <h3 class="text-3xl font-bold text-gray-800">{{ total_questions }}</h3>
+            <p class="text-gray-600">Total Questions</p>
+        </div>
+        
+        <div class="bg-white rounded-2xl p-6 shadow-lg text-center card-hover">
+            <div class="w-12 h-12 bg-purple-500 rounded-lg flex items-center justify-center mx-auto mb-4">
+                <i class="fas fa-users text-white text-xl"></i>
+            </div>
+            <h3 class="text-3xl font-bold text-gray-800">{{ total_sessions }}</h3>
+            <p class="text-gray-600">Student Attempts</p>
+        </div>
     </div>
-    {% else %}
-    <div class="text-center py-12 text-gray-500">
-        <i class="fas fa-file-alt text-6xl mb-4 text-gray-300"></i>
-        <p class="text-lg mb-4">No Exams Created Yet</p>
-        <a href="{% url 'exam:create_exam' %}" class="bg-green-600 text-white px-6 py-3 rounded-lg hover:bg-green-700 transition duration-200 font-semibold inline-flex items-center">
-            <i class="fas fa-plus mr-2"></i>Create Your First Exam
-        </a>
+
+    <!-- Quick Actions -->
+    <div class="bg-white rounded-2xl shadow-lg p-6">
+        <h2 class="text-2xl font-bold text-gray-800 mb-6">Question Management</h2>
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+            <a href="{% url 'exam:teacher_questions' %}" class="bg-gradient-to-br from-green-500 to-green-600 text-white p-6 rounded-xl text-center hover:shadow-xl transition duration-200 card-hover">
+                <i class="fas fa-question-circle text-4xl mb-4"></i>
+                <h3 class="text-xl font-semibold mb-2">Manage Questions</h3>
+                <p class="text-green-100 text-sm">Create and organize questions</p>
+            </a>
+            
+            <a href="{% url 'exam:add_question' %}" class="bg-gradient-to-br from-blue-500 to-blue-600 text-white p-6 rounded-xl text-center hover:shadow-xl transition duration-200 card-hover">
+                <i class="fas fa-plus-circle text-4xl mb-4"></i>
+                <h3 class="text-xl font-semibold mb-2">Add Question</h3>
+                <p class="text-blue-100 text-sm">Create single question</p>
+            </a>
+            
+            <a href="{% url 'exam:bulk_upload_questions' %}" class="bg-gradient-to-br from-purple-500 to-purple-600 text-white p-6 rounded-xl text-center hover:shadow-xl transition duration-200 card-hover">
+                <i class="fas fa-file-upload text-4xl mb-4"></i>
+                <h3 class="text-xl font-semibold mb-2">Bulk Upload</h3>
+                <p class="text-purple-100 text-sm">Upload multiple questions</p>
+            </a>
+        </div>
     </div>
-    {% endif %}
-</div>
 
+    <!-- My Exams -->
+    <div class="bg-white rounded-2xl shadow-lg p-6">
+        <div class="flex justify-between items-center mb-6">
+            <h2 class="text-2xl font-bold text-gray-800">My Exams</h2>
+            <a href="{% url 'exam:create_exam' %}" class="bg-green-600 text-white px-6 py-3 rounded-lg hover:bg-green-700 transition duration-200 font-semibold inline-flex items-center">
+                <i class="fas fa-plus mr-2"></i>Create New Exam
+            </a>
+        </div>
 
-        <!-- Recent student activity -->
-        <div class="bg-white rounded-2xl shadow-lg p-6">
-            <h2 class="text-2xl font-bold text-gray-800 mb-6">Recent Student Activity</h2>
-            {% if recent_sessions %}
+        {% if my_exams %}
+        <div class="overflow-x-auto">
+            <table class="w-full">
+                <thead class="bg-gray-50">
+                    <tr>
+                        <th class="px-6 py-3 text-left text-sm font-semibold text-gray-600">Exam Title</th>
+                        <th class="px-6 py-3 text-left text-sm font-semibold text-gray-600">Subject</th>
+                        <th class="px-6 py-3 text-left text-sm font-semibold text-gray-600">Status</th>
+                        <th class="px-6 py-3 text-left text-sm font-semibold text-gray-600">Students</th>
+                        <th class="px-6 py-3 text-left text-sm font-semibold text-gray-600">Actions</th>
+                    </tr>
+                </thead>
+                <tbody class="divide-y divide-gray-200">
+                    {% for exam in my_exams %}
+                    <tr class="hover:bg-gray-50">
+                        <td class="px-6 py-4 font-semibold text-gray-800">{{ exam.title }}</td>
+                        <td class="px-6 py-4 text-gray-600">{{ exam.subject.name|default:"General" }}</td>
+                        <td class="px-6 py-4">
+                            <span class="{% if exam.status == 'published' %}bg-green-100 text-green-800{% else %}bg-yellow-100 text-yellow-800{% endif %} px-3 py-1 rounded-full text-xs font-semibold">
+                                {{ exam.get_status_display }}
+                            </span>
+                        </td>
+                        <td class="px-6 py-4 font-semibold text-gray-800">{{ exam.sessions.count }}</td>
+                        <td class="px-6 py-4 flex space-x-2">
+                            <a href="{% url 'exam:exam_details' exam.id %}" class="bg-purple-600 text-white px-3 py-1 rounded text-sm hover:bg-purple-700" title="View Details">
+                                <i class="fas fa-eye"></i>
+                            </a>
+                            <a href="#" class="bg-blue-600 text-white px-3 py-1 rounded text-sm hover:bg-blue-700" title="Edit">
+                                <i class="fas fa-edit"></i>
+                            </a>
+                            <a href="#" class="bg-green-600 text-white px-3 py-1 rounded text-sm hover:bg-green-700" title="Statistics">
+                                <i class="fas fa-chart-bar"></i>
+                            </a>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {% else %}
+        <div class="text-center py-12">
+            <i class="fas fa-clipboard-list text-gray-300 text-6xl mb-4"></i>
+            <p class="text-gray-500 text-lg">No Exams Created Yet</p>
+            <a href="{% url 'exam:create_exam' %}" class="mt-4 inline-block bg-green-600 text-white px-6 py-2 rounded-lg hover:bg-green-700">
+                Create Your First Exam
+            </a>
+        </div>
+        {% endif %}
+    </div>
+
+    <!-- Recent Student Activity -->
+    <div class="bg-white rounded-2xl shadow-lg p-6">
+        <h2 class="text-2xl font-bold text-gray-800 mb-6">Recent Student Activity</h2>
+        {% if recent_sessions %}
+        <div class="space-y-3">
             {% for session in recent_sessions %}
-            <div class="p-4 border rounded-lg mb-2 flex justify-between hover:bg-gray-50">
+            <div class="p-4 border rounded-lg hover:bg-gray-50 transition duration-200 flex justify-between items-center">
                 <div>
-                    <p class="font-semibold">{{ session.user.get_full_name|default:session.user.username }}</p>
+                    <p class="font-semibold text-gray-800">{{ session.user.get_full_name|default:session.user.username }}</p>
                     <p class="text-sm text-gray-600">Completed: {{ session.exam.title }}</p>
+                    <p class="text-xs text-gray-500">{{ session.end_time|date:"M d, Y H:i" }}</p>
                 </div>
                 <div>
-                    <span class="font-bold {% if session.score >= session.exam.passing_score %}text-green-600{% else %}text-red-600{% endif %}">
+                    <span class="text-2xl font-bold {% if session.score >= session.exam.passing_score %}text-green-600{% else %}text-red-600{% endif %}">
                         {{ session.score }}%
                     </span>
                 </div>
             </div>
             {% endfor %}
-            {% else %}
-            <div class="text-center py-8 text-gray-500">No student activity yet</div>
-            {% endif %}
         </div>
+        {% else %}
+        <div class="text-center py-8 text-gray-500">
+            <i class="fas fa-inbox text-4xl mb-3 text-gray-300"></i>
+            <p>No student activity yet</p>
+        </div>
+        {% endif %}
     </div>
 
-    <footer class="bg-gray-800 text-white py-6 mt-12 text-center">
-        <p>&copy; 2024 CBT System. Teacher Portal - Empowering education.</p>
-    </footer>
-</body>
-</html>
-
-<!-- SweetAlert2 CDN -->
-<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
-
-<script>
-function deleteExam(examId, examTitle) {
-    Swal.fire({
-        title: 'Delete Exam?',
-        html: `Are you sure you want to delete<br><strong>"${examTitle}"</strong>?<br><br>This action cannot be undone!`,
-        icon: 'warning',
-        showCancelButton: true,
-        confirmButtonColor: '#dc2626',
-        cancelButtonColor: '#6b7280',
-        confirmButtonText: 'Yes, Delete It!',
-        cancelButtonText: 'Cancel',
-        reverseButtons: true
-    }).then((result) => {
-        if (result.isConfirmed) {
-            // Create form and submit
-            const form = document.createElement('form');
-            form.method = 'POST';
-            form.action = `/teacher/exams/${examId}/delete/`;
-            
-            const csrfToken = document.querySelector('[name=csrfmiddlewaretoken]').value;
-            const csrfInput = document.createElement('input');
-            csrfInput.type = 'hidden';
-            csrfInput.name = 'csrfmiddlewaretoken';
-            csrfInput.value = csrfToken;
-            
-            form.appendChild(csrfInput);
-            document.body.appendChild(form);
-            form.submit();
-        }
-    });
-}
-</script>
+</div>
+{% endblock %}
