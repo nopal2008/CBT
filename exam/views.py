@@ -1303,26 +1303,99 @@ def bulk_upload_questions(request):
 @login_required
 @teacher_required
 def create_exam(request):
-    """Form untuk membuat exam baru"""
+    """Create exam baru - TANPA token"""
     if request.method == 'POST':
         form = ExamForm(request.POST)
         if form.is_valid():
             exam = form.save(commit=False)
             exam.created_by = request.user
             exam.save()
-            messages.success(request, 'Exam created successfully!')
-            return redirect('exam:teacher_dashboard')  # arahkan ke dashboard guru
+            form.save_m2m()  # Save many-to-many relationships
+            
+            messages.success(request, f'✅ Exam "{exam.title}" created successfully!')
+            return redirect('exam:teacher_dashboard')
     else:
         form = ExamForm()
 
     context = {
-        'title': 'Create Exam',
-        'form': form
+        'form': form,
+        'title': 'Create New Exam',
+        'button_text': 'Create Exam'
     }
-    return render(request, 'exam/create_exam_form.html', context)
+    return render(request, 'exam/exam_form.html', context)
+
 
 @login_required
-def exam_details(request, exam_id):
+@teacher_required
+def exam_detail(request, exam_id):
+    """Detail/Show exam"""
+    exam = get_object_or_404(Exam, id=exam_id, created_by=request.user)
+    
+    # Get exam statistics
+    total_sessions = ExamSession.objects.filter(exam=exam).count()
+    completed_sessions = ExamSession.objects.filter(exam=exam, is_completed=True)
+    avg_score = completed_sessions.aggregate(Avg('score'))['score__avg'] or 0
+    
+    # Get questions
+    questions = exam.questions.all().prefetch_related('choices')
+    
+    # Get recent sessions
+    recent_sessions = ExamSession.objects.filter(exam=exam).select_related('user').order_by('-start_time')[:10]
+    
+    context = {
+        'exam': exam,
+        'total_sessions': total_sessions,
+        'completed_sessions': completed_sessions.count(),
+        'avg_score': round(avg_score, 2),
+        'questions': questions,
+        'recent_sessions': recent_sessions,
+    }
+    return render(request, 'exam/exam_detail.html', context)
+
+
+@login_required
+@teacher_required
+def edit_exam(request, exam_id):
+    """Edit exam yang sudah ada"""
+    exam = get_object_or_404(Exam, id=exam_id, created_by=request.user)
+    
+    if request.method == 'POST':
+        form = ExamForm(request.POST, instance=exam)
+        if form.is_valid():
+            exam = form.save()
+            messages.success(request, f'✅ Exam "{exam.title}" updated successfully!')
+            return redirect('exam:exam_detail', exam_id=exam.id)
+    else:
+        form = ExamForm(instance=exam)
+
+    context = {
+        'form': form,
+        'exam': exam,
+        'title': f'Edit: {exam.title}',
+        'button_text': 'Update Exam'
+    }
+    return render(request, 'exam/exam_form.html', context)
+
+
+@login_required
+@teacher_required
+def delete_exam(request, exam_id):
+    """Delete exam"""
+    exam = get_object_or_404(Exam, id=exam_id, created_by=request.user)
+    
+    if request.method == 'POST':
+        exam_title = exam.title
+        exam.delete()
+        messages.success(request, f'✅ Exam "{exam_title}" deleted successfully!')
+        return redirect('exam:teacher_dashboard')
+    
+    # Jika bukan POST, redirect ke detail
+    return redirect('exam:exam_detail', exam_id=exam.id)
+
+
+
+@login_required
+def student_exam_details(request, exam_id):
     """Detail page untuk exam dengan informasi lengkap"""
     exam = get_object_or_404(Exam, id=exam_id)
     now = timezone.now()
