@@ -117,31 +117,10 @@ class QuestionBankForm(forms.ModelForm):
             # Anda bisa menambahkan logika filter di sini jika diperlukan
             pass
 
-class ExamForm(forms.ModelForm):
-    # Field tambahan non-model
-    auto_generate_token = forms.BooleanField(
-        required=False,
-        initial=True,
-        label="Auto-generate token",
-        help_text="Automatically generate 6-digit access token when exam is published"
-    )
-    custom_token = forms.CharField(
-        max_length=6,
-        required=False,
-        label="Custom Token",
-        help_text="Optional: Enter custom 6-digit token (letters and numbers only)",
-        widget=forms.TextInput(attrs={
-            'placeholder': 'e.g., A1B2C3',
-            'style': 'text-transform: uppercase; font-family: monospace;',
-            'class': 'token-input'
-        })
-    )
-    token_expiry = forms.DateTimeField(
-        required=False,
-        widget=forms.DateTimeInput(attrs={'type': 'datetime-local'}),
-        help_text="Optional: Set when the token should expire"
-    )
 
+class ExamForm(forms.ModelForm):
+    """Form untuk Create & Edit Exam - TANPA Token Fields"""
+    
     class Meta:
         model = Exam
         fields = [
@@ -150,63 +129,109 @@ class ExamForm(forms.ModelForm):
             'passing_score', 'max_attempts', 'shuffle_questions', 'shuffle_choices',
             'show_result_immediately', 'allow_back_navigation', 'require_webcam',
             'require_microphone', 'enable_proctoring', 'allowed_departments',
-            'allowed_users', 'status', 'auto_generate_token', 'custom_token', 'token_expiry'
+            'allowed_users', 'status'
         ]
+        
         widgets = {
-            'start_time': forms.DateTimeInput(attrs={'type': 'datetime-local'}),
-            'end_time': forms.DateTimeInput(attrs={'type': 'datetime-local'}),
-            'result_publish_time': forms.DateTimeInput(attrs={'type': 'datetime-local'}),
-            'description': forms.Textarea(attrs={'rows': 4}),
+            'title': forms.TextInput(attrs={
+                'class': 'w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition',
+                'placeholder': 'Enter exam title...',
+                'required': True
+            }),
+            'description': forms.Textarea(attrs={
+                'class': 'w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition',
+                'rows': 4,
+                'placeholder': 'Describe the exam purpose and content...'
+            }),
+            'exam_type': forms.Select(attrs={
+                'class': 'w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition'
+            }),
+            'subject': forms.Select(attrs={
+                'class': 'w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition'
+            }),
+            'duration_minutes': forms.NumberInput(attrs={
+                'class': 'w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition',
+                'min': 1,
+                'placeholder': '60'
+            }),
+            'start_time': forms.DateTimeInput(attrs={
+                'class': 'w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition flatpickr-datetime',
+                'placeholder': 'Select start date & time'
+            }),
+            'end_time': forms.DateTimeInput(attrs={
+                'class': 'w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition flatpickr-datetime',
+                'placeholder': 'Select end date & time'
+            }),
+            'result_publish_time': forms.DateTimeInput(attrs={
+                'class': 'w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition flatpickr-datetime',
+                'placeholder': 'When to publish results (optional)'
+            }),
+            'passing_score': forms.NumberInput(attrs={
+                'class': 'w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition',
+                'min': 0,
+                'max': 100,
+                'placeholder': '70'
+            }),
+            'max_attempts': forms.NumberInput(attrs={
+                'class': 'w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition',
+                'min': 1,
+                'placeholder': '1'
+            }),
+            'status': forms.Select(attrs={
+                'class': 'w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition'
+            }),
+            'allowed_departments': forms.SelectMultiple(attrs={
+                'class': 'w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition',
+                'size': 5
+            }),
+            'allowed_users': forms.SelectMultiple(attrs={
+                'class': 'w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition',
+                'size': 5
+            }),
         }
+        
         help_texts = {
-            'status': 'Token will be auto-generated when status is set to "Published".',
+            'duration_minutes': 'Time limit in minutes',
+            'passing_score': 'Minimum score to pass (0-100)',
+            'max_attempts': 'How many times students can take this exam',
+            'allowed_departments': 'Leave empty to allow all departments',
+            'allowed_users': 'Leave empty to allow all students',
         }
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        # Set initial nilai token
-        if self.instance and self.instance.access_token:
-            self.fields['auto_generate_token'].initial = False
-            self.fields['custom_token'].initial = self.instance.access_token
-        else:
-            self.fields['auto_generate_token'].initial = True
-
-    def clean_custom_token(self):
-        token = self.cleaned_data.get('custom_token', '').strip().upper()
-        if token:
-            if len(token) != 6:
-                raise forms.ValidationError("Token must be exactly 6 characters long.")
-            if not token.isalnum():
-                raise forms.ValidationError("Token can only contain letters and numbers.")
-            if Exam.objects.filter(access_token=token).exclude(pk=self.instance.pk).exists():
-                raise forms.ValidationError("This token is already in use.")
-        return token
-
+        
+        # Set empty labels untuk select multiple
+        self.fields['allowed_departments'].empty_label = None
+        self.fields['allowed_users'].empty_label = None
+        
     def clean(self):
         cleaned_data = super().clean()
-        auto_generate = cleaned_data.get('auto_generate_token')
-        custom_token = cleaned_data.get('custom_token')
-        status = cleaned_data.get('status')
-
-        if status == 'published' and not auto_generate and not custom_token:
-            raise forms.ValidationError(
-                "Please enable auto-generate token or provide a custom token for published exams."
-            )
+        start_time = cleaned_data.get('start_time')
+        end_time = cleaned_data.get('end_time')
+        result_publish_time = cleaned_data.get('result_publish_time')
+        
+        # Validasi: End time harus setelah start time
+        if start_time and end_time:
+            if end_time <= start_time:
+                raise forms.ValidationError({
+                    'end_time': 'End time must be after start time'
+                })
+        
+        # Validasi: Result publish time harus setelah end time
+        if end_time and result_publish_time:
+            if result_publish_time <= end_time:
+                raise forms.ValidationError({
+                    'result_publish_time': 'Result publish time must be after exam end time'
+                })
+        
         return cleaned_data
 
     def save(self, commit=True):
         exam = super().save(commit=False)
-        auto_generate = self.cleaned_data.get('auto_generate_token', True)
-        custom_token = self.cleaned_data.get('custom_token', '').strip().upper()
-
-        if custom_token:
-            exam.access_token = custom_token
-        elif auto_generate and exam.status == 'published' and not exam.access_token:
-            exam.generate_token()
-        elif not auto_generate and not custom_token and exam.status == 'published':
-            exam.access_token = None
-
-        exam.token_expiry = self.cleaned_data.get('token_expiry')
+        
+        # ✅ TIDAK ada logic token lagi - token hanya di admin panel
+        
         if commit:
             exam.save()
             self.save_m2m()
