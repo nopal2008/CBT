@@ -9,7 +9,7 @@
 </head>
 <body class="bg-gray-50">
     <!-- Navigation -->
-    <nav class="bg-green-600 text-white shadow-lg">
+    <nav class="bg-green-600 text-white s`hadow-lg">
         <div class="container mx-auto px-4">
             <div class="flex justify-between items-center py-4">
                 <div class="flex items-center space-x-3">
@@ -98,49 +98,76 @@
         </div>
 
         <!-- My Exams -->
-        <div class="bg-white rounded-2xl shadow-lg p-6 mb-8">
-            <div class="flex justify-between items-center mb-6">
-                <h2 class="text-2xl font-bold text-gray-800">My Exams</h2>
-                <a href="{% url 'exam:create_exam' %}" class="bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 transition duration-200 font-semibold inline-flex items-center">
-                    <i class="fas fa-plus mr-2"></i>Create New Exam
-                </a>
-            </div>
+       <!-- My Exams -->
+<div class="bg-white rounded-2xl shadow-lg p-6 mb-8">
+    <div class="flex justify-between items-center mb-6">
+        <h2 class="text-2xl font-bold text-gray-800">My Exams</h2>
+        <a href="{% url 'exam:create_exam' %}" class="bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 transition duration-200 font-semibold inline-flex items-center">
+            <i class="fas fa-plus mr-2"></i>Create New Exam
+        </a>
+    </div>
 
-            {% if my_exams %}
-            <table class="w-full">
-                <thead>
-                    <tr class="bg-gray-50">
-                        <th class="px-4 py-3 text-left text-sm font-semibold text-gray-600">Exam Title</th>
-                        <th class="px-4 py-3 text-left text-sm font-semibold text-gray-600">Subject</th>
-                        <th class="px-4 py-3 text-left text-sm font-semibold text-gray-600">Status</th>
-                        <th class="px-4 py-3 text-left text-sm font-semibold text-gray-600">Students</th>
-                        <th class="px-4 py-3 text-left text-sm font-semibold text-gray-600">Actions</th>
-                    </tr>
-                </thead>
-                <tbody class="divide-y divide-gray-200">
-                    {% for exam in my_exams %}
-                    <tr class="hover:bg-gray-50">
-                        <td class="px-4 py-4 font-semibold text-gray-800">{{ exam.title }}</td>
-                        <td class="px-4 py-4">{{ exam.subject.name|default:"General" }}</td>
-                        <td class="px-4 py-4">
-                            <span class="{% if exam.status == 'published' %}bg-green-100 text-green-800{% else %}bg-yellow-100 text-yellow-800{% endif %} px-2 py-1 rounded-full text-xs font-semibold">
-                                {{ exam.get_status_display }}
-                            </span>
-                        </td>
-                        <td class="px-4 py-4 font-semibold text-gray-800">{{ exam.examsession_set.count }}</td>
-                        <td class="px-4 py-4 flex space-x-2">
-                            <a href="#" class="bg-blue-600 text-white px-3 py-1 rounded text-sm hover:bg-blue-700"><i class="fas fa-edit"></i></a>
-                            <a href="#" class="bg-green-600 text-white px-3 py-1 rounded text-sm hover:bg-green-700"><i class="fas fa-chart-bar"></i></a>
-                            <a href="#" class="bg-purple-600 text-white px-3 py-1 rounded text-sm hover:bg-purple-700"><i class="fas fa-eye"></i></a>
-                        </td>
-                    </tr>
-                    {% endfor %}
-                </tbody>
-            </table>
-            {% else %}
-            <div class="text-center py-12 text-gray-500">No Exams Created Yet</div>
-            {% endif %}
-        </div>
+    {% if my_exams %}
+    <div class="overflow-x-auto">
+        <table class="w-full">
+            <thead>
+                <tr class="bg-gray-50 border-b">
+                    <th class="px-4 py-3 text-left text-sm font-semibold text-gray-600">Exam Title</th>
+                    <th class="px-4 py-3 text-left text-sm font-semibold text-gray-600">Subject</th>
+                    <th class="px-4 py-3 text-left text-sm font-semibold text-gray-600">Status</th>
+                    <th class="px-4 py-3 text-left text-sm font-semibold text-gray-600">Students</th>
+                    <th class="px-4 py-3 text-left text-sm font-semibold text-gray-600">Actions</th>
+                </tr>
+            </thead>
+            <tbody class="divide-y divide-gray-200">
+                {% for exam in my_exams %}
+                <tr class="hover:bg-gray-50 transition">
+                    <td class="px-4 py-4 font-semibold text-gray-800">{{ exam.title }}</td>
+                    <td class="px-4 py-4">{{ exam.subject.name|default:"General" }}</td>
+                    <td class="px-4 py-4">
+                        <span class="{% if exam.status == 'published' %}bg-green-100 text-green-800{% else %}bg-yellow-100 text-yellow-800{% endif %} px-3 py-1 rounded-full text-xs font-semibold">
+                            {{ exam.get_status_display }}
+                        </span>
+                    </td>
+                    <td class="px-4 py-4 font-semibold text-gray-800">{{ exam.examsession_set.count }}</td>
+                    <td class="px-4 py-4 flex space-x-2">
+                        <!-- Edit Button -->
+                        <a href="{% url 'exam:edit_exam' exam.id %}" 
+                           class="bg-blue-600 text-white px-3 py-1 rounded text-sm hover:bg-blue-700 transition inline-flex items-center"
+                           title="Edit Exam">
+                            <i class="fas fa-edit"></i>
+                        </a>
+                        
+                        <!-- Show/Detail Button -->
+                        <a href="{% url 'exam:exam_detail' exam.id %}" 
+                           class="bg-purple-600 text-white px-3 py-1 rounded text-sm hover:bg-purple-700 transition inline-flex items-center"
+                           title="View Details">
+                            <i class="fas fa-eye"></i>
+                        </a>
+                        
+                        <!-- Delete Button -->
+                        <button onclick="deleteExam({{ exam.id }}, '{{ exam.title|escapejs }}')" 
+                                class="bg-red-600 text-white px-3 py-1 rounded text-sm hover:bg-red-700 transition inline-flex items-center"
+                                title="Delete Exam">
+                            <i class="fas fa-trash"></i>
+                        </button>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    {% else %}
+    <div class="text-center py-12 text-gray-500">
+        <i class="fas fa-file-alt text-6xl mb-4 text-gray-300"></i>
+        <p class="text-lg mb-4">No Exams Created Yet</p>
+        <a href="{% url 'exam:create_exam' %}" class="bg-green-600 text-white px-6 py-3 rounded-lg hover:bg-green-700 transition duration-200 font-semibold inline-flex items-center">
+            <i class="fas fa-plus mr-2"></i>Create Your First Exam
+        </a>
+    </div>
+    {% endif %}
+</div>
+
 
         <!-- Recent student activity -->
         <div class="bg-white rounded-2xl shadow-lg p-6">
@@ -170,3 +197,39 @@
     </footer>
 </body>
 </html>
+
+<!-- SweetAlert2 CDN -->
+<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+
+<script>
+function deleteExam(examId, examTitle) {
+    Swal.fire({
+        title: 'Delete Exam?',
+        html: `Are you sure you want to delete<br><strong>"${examTitle}"</strong>?<br><br>This action cannot be undone!`,
+        icon: 'warning',
+        showCancelButton: true,
+        confirmButtonColor: '#dc2626',
+        cancelButtonColor: '#6b7280',
+        confirmButtonText: 'Yes, Delete It!',
+        cancelButtonText: 'Cancel',
+        reverseButtons: true
+    }).then((result) => {
+        if (result.isConfirmed) {
+            // Create form and submit
+            const form = document.createElement('form');
+            form.method = 'POST';
+            form.action = `/teacher/exams/${examId}/delete/`;
+            
+            const csrfToken = document.querySelector('[name=csrfmiddlewaretoken]').value;
+            const csrfInput = document.createElement('input');
+            csrfInput.type = 'hidden';
+            csrfInput.name = 'csrfmiddlewaretoken';
+            csrfInput.value = csrfToken;
+            
+            form.appendChild(csrfInput);
+            document.body.appendChild(form);
+            form.submit();
+        }
+    });
+}
+</script>
