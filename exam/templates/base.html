@@ -11,6 +11,10 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    
+    <!-- Flatpickr for Datetime Picker -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
+    
     <style>
         body {
             font-family: 'Poppins', sans-serif;
@@ -24,74 +28,93 @@
         .card-hover:hover {
             transform: translateY(-5px);
         }
-        .gradient-bg {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        
+        /* Toast Notification Styles */
+        .toast-container {
+            position: fixed;
+            top: 24px;
+            right: 24px;
+            z-index: 9999;
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+            max-width: 400px;
         }
-           /* Tambahkan ini di bagian style base.html */
-        .line-clamp-2 {
-            display: -webkit-box;
-            -webkit-line-clamp: 2;
-            -webkit-box-orient: vertical;
-            overflow: hidden;
+        
+        .toast {
+            padding: 16px 20px;
+            border-radius: 12px;
+            font-weight: 600;
+            color: white;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.15);
+            animation: slideIn 0.3s ease-out;
+            display: flex;
+            align-items: center;
+            gap: 12px;
         }
-        .line-clamp-3 {
-            display: -webkit-box;
-            -webkit-line-clamp: 3;
-            -webkit-box-orient: vertical;
-            overflow: hidden;
+        
+        .toast.success {
+            background: linear-gradient(135deg, #10b981, #059669);
+        }
+        
+        .toast.error {
+            background: linear-gradient(135deg, #ef4444, #dc2626);
+        }
+        
+        .toast.warning {
+            background: linear-gradient(135deg, #f59e0b, #d97706);
+        }
+        
+        .toast.info {
+            background: linear-gradient(135deg, #3b82f6, #2563eb);
+        }
+        
+        @keyframes slideIn {
+            from {
+                transform: translateX(400px);
+                opacity: 0;
+            }
+            to {
+                transform: translateX(0);
+                opacity: 1;
+            }
+        }
+        
+        @keyframes slideOut {
+            from {
+                transform: translateX(0);
+                opacity: 1;
+            }
+            to {
+                transform: translateX(400px);
+                opacity: 0;
+            }
+        }
+        
+        .toast.hiding {
+            animation: slideOut 0.3s ease-in forwards;
         }
     </style>
+    
+    {% block extra_head %}{% endblock %}
 </head>
 
-{% if messages %}
-<div id="toast-wrapper" class="toast-container">
-    {% for message in messages %}
-    <div class="toast-item toast-{{ message.tags }}">
-        {{ message }}
-    </div>
-    {% endfor %}
-</div>
-{% endif %}
-
-<script>
-setTimeout(() => {
-    const toasts = document.querySelectorAll('.toast-item');
-    toasts.forEach((toast) => {
-        toast.style.opacity = "0";
-        setTimeout(() => toast.remove(), 400);
-    });
-}, 2800);
-</script>
-
-<style>
-.toast-container {
-    position: fixed;
-    top: 20px;
-    right: 22px;
-    z-index: 9999;
-    display: flex;
-    flex-direction: column;
-    gap: 10px;
-}
-
-.toast-item {
-    padding: 12px 18px;
-    border-radius: 10px;
-    font-weight: 600;
-    color: white;
-    box-shadow: 0 4px 16px rgba(0,0,0,0.15);
-    transition: opacity 0.4s ease;
-}
-
-/* warna toast */
-.toast-success { background: #10b981; } /* green */
-.toast-error { background: #ef4444; }   /* red */
-.toast-warning { background: #f59e0b; } /* yellow */
-.toast-info { background: #3b82f6; }    /* blue */
-</style>
-
-
 <body class="bg-gray-50">
+    
+    <!-- Toast Container -->
+    <div id="toast-container" class="toast-container"></div>
+
+    <!-- Messages Handler -->
+    {% if messages %}
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            {% for message in messages %}
+                showToast('{{ message }}', '{{ message.tags }}');
+            {% endfor %}
+        });
+    </script>
+    {% endif %}
+
     <div class="flex h-screen">
         <!-- Sidebar -->
         {% include 'components/sidebar.html' %}
@@ -108,8 +131,47 @@ setTimeout(() => {
         </div>
     </div>
 
-    <!-- Footer -->
-    {% include 'components/footer.html' %}
+    <!-- Flatpickr JS -->
+    <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
+    
+    <!-- Toast Notification Script -->
+    <script>
+        function showToast(message, type = 'info') {
+            const container = document.getElementById('toast-container');
+            const toast = document.createElement('div');
+            
+            const icons = {
+                success: 'fa-check-circle',
+                error: 'fa-exclamation-circle',
+                warning: 'fa-exclamation-triangle',
+                info: 'fa-info-circle'
+            };
+            
+            toast.className = `toast ${type}`;
+            toast.innerHTML = `
+                <i class="fas ${icons[type]} text-xl"></i>
+                <span>${message}</span>
+            `;
+            
+            container.appendChild(toast);
+            
+            // Auto remove after 5 seconds
+            setTimeout(() => {
+                toast.classList.add('hiding');
+                setTimeout(() => {
+                    toast.remove();
+                }, 300);
+            }, 5000);
+            
+            // Click to dismiss
+            toast.addEventListener('click', () => {
+                toast.classList.add('hiding');
+                setTimeout(() => {
+                    toast.remove();
+                }, 300);
+            });
+        }
+    </script>
 
     {% block scripts %}{% endblock %}
 </body>
