@@ -256,6 +256,20 @@ def my_exams(request):
     passed_exams = completed_sessions.filter(score__gte=F('exam__passing_score')).count()
     success_rate = round((passed_exams / completed_sessions.count() * 100), 2) if completed_sessions.count() > 0 else 0
     
+    # Dapatkan available tokens (Global dan Normal yang active)
+    # Token normal ditampilkan untuk semua exam yang published dan active (tidak perlu dalam rentang waktu)
+    all_published_exams = Exam.objects.filter(
+        status='published',
+        is_active=True
+    )
+    
+    active_tokens = ExamToken.objects.filter(
+        status='active',
+        expires_at__gte=now
+    ).filter(
+        Q(is_global=True) | Q(exam__in=all_published_exams)
+    ).select_related('exam', 'exam__subject').order_by('-is_global', 'expires_at')
+    
     context = {
         'available_exams': available_exams,
         'ongoing_sessions': ongoing_sessions,
@@ -265,6 +279,7 @@ def my_exams(request):
         'average_score': round(avg_score, 2),
         'success_rate': success_rate,
         'current_date': now,
+        'active_tokens': active_tokens,
     }
     
     return render(request, 'exam/my_exams.html', context)
@@ -1299,6 +1314,18 @@ def bulk_upload_questions(request):
     
     return render(request, 'exam/bulk_upload.html', {'exams': exams, 'question_banks': question_banks})
 
+@login_required
+@teacher_required
+def exam_list(request):
+    teacher = request.user
+    exams = Exam.objects.filter(created_by=teacher) \
+                        .select_related('subject') \
+                        .prefetch_related('sessions') \
+                        .order_by('-created_at')
+
+    return render(request, 'exam/exam_list.html', {
+        'exams': exams
+    })
     
 @login_required
 @teacher_required
