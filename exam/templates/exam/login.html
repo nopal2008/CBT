@@ -2,37 +2,218 @@
 <html lang="id">
 <head>
     <meta charset="UTF-8">
-    <title>Login</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Login - CBT System</title>
     <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        .fade-in { animation: fadeIn 0.6s ease-out; }
+        .gradient-bg {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        }
+        .input-focus:focus {
+            border-color: #667eea;
+            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+        }
+    </style>
 </head>
-<body class="bg-gray-100">
-    <div class="container mx-auto mt-10">
-        <div class="max-w-md mx-auto bg-white p-8 rounded-lg shadow-lg">
-            <h2 class="text-2xl font-bold mb-6 text-center">Login CBT System</h2>
-            <form method="post">
-                {% csrf_token %}
-                <div class="mb-4">
-                    <label class="block text-gray-700 text-sm font-bold mb-2" for="id_username">
-                        Username
-                    </label>
-                    <input type="text" name="username" id="id_username" 
-                           class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline">
+<body class="gradient-bg min-h-screen flex items-center justify-center p-4">
+    <div class="max-w-md w-full fade-in">
+        <!-- Card Container -->
+        <div class="bg-white rounded-2xl shadow-2xl overflow-hidden">
+            <!-- Header -->
+            <div class="bg-gradient-to-r from-indigo-600 to-purple-600 px-8 py-6">
+                <div class="text-center">
+                    <div class="inline-block bg-white rounded-full p-3 mb-2">
+                        <i class="fas fa-graduation-cap text-indigo-600 text-3xl"></i>
+                    </div>
+                    <h2 class="text-2xl font-bold text-white">CBT System</h2>
+                    <p class="text-indigo-100 text-sm mt-1">Masuk ke akun Anda</p>
                 </div>
-                <div class="mb-6">
-                    <label class="block text-gray-700 text-sm font-bold mb-2" for="id_password">
-                        Password
-                    </label>
-                    <input type="password" name="password" id="id_password" 
-                           class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 mb-3 leading-tight focus:outline-none focus:shadow-outline">
+            </div>
+
+            <!-- Form -->
+            <div class="px-8 py-8">
+                <!-- Error Messages -->
+                {% if form.errors %}
+                <div class="mb-6 bg-red-50 border-l-4 border-red-500 p-4 rounded-r">
+                    <div class="flex items-center">
+                        <i class="fas fa-exclamation-circle text-red-500 mr-2"></i>
+                        <div class="text-sm text-red-700">
+                            {% if form.non_field_errors %}
+                                {{ form.non_field_errors.0 }}
+                            {% else %}
+                                Username atau password salah. Silakan coba lagi.
+                            {% endif %}
+                        </div>
+                    </div>
                 </div>
-                <div class="flex items-center justify-between">
-                    <button type="submit" 
-                            class="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded focus:outline-none focus:shadow-outline">
-                        Login
+                {% endif %}
+
+                <!-- Success Message (if any) -->
+                {% if messages %}
+                    {% for message in messages %}
+                    <div class="mb-6 bg-green-50 border-l-4 border-green-500 p-4 rounded-r">
+                        <div class="flex items-center">
+                            <i class="fas fa-check-circle text-green-500 mr-2"></i>
+                            <div class="text-sm text-green-700">{{ message }}</div>
+                        </div>
+                    </div>
+                    {% endfor %}
+                {% endif %}
+
+                <form method="post" id="loginForm" novalidate>
+                    {% csrf_token %}
+                    
+                    <!-- Username Field -->
+                    <div class="mb-5">
+                        <label class="block text-gray-700 text-sm font-semibold mb-2" for="id_username">
+                            <i class="fas fa-user mr-1 text-gray-500"></i>Username
+                        </label>
+                        <input 
+                            type="text" 
+                            name="username" 
+                            id="id_username"
+                            required
+                            class="input-focus w-full px-4 py-3 border border-gray-300 rounded-lg transition duration-200 focus:outline-none"
+                            placeholder="Masukkan username Anda"
+                            autocomplete="username"
+                        >
+                        <p class="text-red-500 text-xs mt-1 hidden" id="usernameError">
+                            <i class="fas fa-exclamation-circle mr-1"></i>Username wajib diisi
+                        </p>
+                    </div>
+
+                    <!-- Password Field -->
+                    <div class="mb-6">
+                        <label class="block text-gray-700 text-sm font-semibold mb-2" for="id_password">
+                            <i class="fas fa-lock mr-1 text-gray-500"></i>Password
+                        </label>
+                        <div class="relative">
+                            <input 
+                                type="password" 
+                                name="password" 
+                                id="id_password"
+                                required
+                                class="input-focus w-full px-4 py-3 border border-gray-300 rounded-lg transition duration-200 focus:outline-none pr-12"
+                                placeholder="Masukkan password Anda"
+                                autocomplete="current-password"
+                            >
+                            <button 
+                                type="button" 
+                                onclick="togglePassword()"
+                                class="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-500 hover:text-gray-700 focus:outline-none"
+                            >
+                                <i class="fas fa-eye" id="toggleIcon"></i>
+                            </button>
+                        </div>
+                        <p class="text-red-500 text-xs mt-1 hidden" id="passwordError">
+                            <i class="fas fa-exclamation-circle mr-1"></i>Password wajib diisi
+                        </p>
+                    </div>
+
+                    <!-- Remember Me & Forgot Password -->
+                    <div class="flex items-center justify-between mb-6">
+                        <label class="flex items-center">
+                            <input type="checkbox" name="remember" class="w-4 h-4 text-indigo-600 border-gray-300 rounded focus:ring-indigo-500">
+                            <span class="ml-2 text-sm text-gray-600">Ingat saya</span>
+                        </label>
+                        <a href="#" class="text-sm text-indigo-600 hover:text-indigo-800 font-medium">
+                            Lupa password?
+                        </a>
+                    </div>
+
+                    <!-- Submit Button -->
+                    <button 
+                        type="submit" 
+                        class="w-full bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 text-white font-semibold py-3 px-4 rounded-lg transition duration-200 transform hover:scale-[1.02] focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2"
+                    >
+                        <i class="fas fa-sign-in-alt mr-2"></i>Masuk
                     </button>
-                </div>
-            </form>
+                </form>
+            </div>
+
+            <!-- Footer -->
+            <div class="px-8 py-4 bg-gray-50 border-t border-gray-100">
+                <p class="text-center text-sm text-gray-600">
+                    Belum punya akun? 
+                    <a href="#" class="text-indigo-600 hover:text-indigo-800 font-medium">Daftar sekarang</a>
+                </p>
+            </div>
+        </div>
+
+        <!-- Copyright -->
+        <div class="text-center mt-6">
+            <p class="text-white text-sm">
+                <i class="fas fa-copyright mr-1"></i>2024 CBT System. All rights reserved.
+            </p>
         </div>
     </div>
+
+    <script>
+        // Toggle password visibility
+        function togglePassword() {
+            const passwordInput = document.getElementById('id_password');
+            const toggleIcon = document.getElementById('toggleIcon');
+            
+            if (passwordInput.type === 'password') {
+                passwordInput.type = 'text';
+                toggleIcon.classList.remove('fa-eye');
+                toggleIcon.classList.add('fa-eye-slash');
+            } else {
+                passwordInput.type = 'password';
+                toggleIcon.classList.remove('fa-eye-slash');
+                toggleIcon.classList.add('fa-eye');
+            }
+        }
+
+        // Form validation
+        document.getElementById('loginForm').addEventListener('submit', function(e) {
+            let isValid = true;
+            const username = document.getElementById('id_username');
+            const password = document.getElementById('id_password');
+            const usernameError = document.getElementById('usernameError');
+            const passwordError = document.getElementById('passwordError');
+
+            // Reset errors
+            usernameError.classList.add('hidden');
+            passwordError.classList.add('hidden');
+            username.classList.remove('border-red-500');
+            password.classList.remove('border-red-500');
+
+            // Validate username
+            if (!username.value.trim()) {
+                isValid = false;
+                usernameError.classList.remove('hidden');
+                username.classList.add('border-red-500');
+            }
+
+            // Validate password
+            if (!password.value.trim()) {
+                isValid = false;
+                passwordError.classList.remove('hidden');
+                password.classList.add('border-red-500');
+            }
+
+            if (!isValid) {
+                e.preventDefault();
+            }
+        });
+
+        // Clear error on input
+        document.getElementById('id_username').addEventListener('input', function() {
+            this.classList.remove('border-red-500');
+            document.getElementById('usernameError').classList.add('hidden');
+        });
+
+        document.getElementById('id_password').addEventListener('input', function() {
+            this.classList.remove('border-red-500');
+            document.getElementById('passwordError').classList.add('hidden');
+        });
+    </script>
 </body>
 </html>
