@@ -75,7 +75,7 @@
         <i class="fas fa-question-circle w-5"></i><span>Questions</span>
       </a>
 
-      <a href="{% url 'exam:create_exam' %}"
+      <a href="{% url 'exam:exam_list' %}"
          class="flex items-center space-x-3 text-white py-3 px-4 rounded-lg hover:bg-blue-700 transition duration-200
          {% if 'exam' in request.resolver_match.url_name and request.resolver_match.url_name != 'teacher_dashboard' %}bg-blue-700 shadow-lg{% endif %}">
         <i class="fas fa-file-alt w-5"></i><span>Exams</span>

@@ -1,161 +1,178 @@
-<!DOCTYPE html>
-<html lang="id">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>{{ title }} - CBT System</title>
-    <script src="https://cdn.tailwindcss.com"></script>
-    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
-</head>
-<body class="bg-gray-50">
-    <!-- Navigation -->
-    <nav class="bg-green-600 text-white shadow-lg">
-        <div class="container mx-auto px-4">
-            <div class="flex justify-between items-center py-4">
-                <div class="flex items-center space-x-3">
-                    <i class="fas fa-chalkboard-teacher text-2xl"></i>
-                    <h1 class="text-xl font-bold">{{ title }}</h1>
-                </div>
-                <div class="flex items-center space-x-4">
-                    <a href="{% url 'exam:teacher_questions' %}" class="bg-blue-500 hover:bg-blue-600 px-4 py-2 rounded-lg transition duration-200">
-                        <i class="fas fa-arrow-left mr-2"></i>Back to Questions
-                    </a>
-                </div>
-            </div>
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}{{ title }} - CBT System{% endblock %}
+
+{% block page_title %}{{ title }}{% endblock %}
+
+{% block content %}
+<div class="max-w-4xl mx-auto space-y-6">
+    
+    <!-- Messages -->
+    {% if messages %}
+    <div class="space-y-3">
+        {% for message in messages %}
+        <div class="{% if message.tags == 'error' %}bg-red-100 border-red-400 text-red-700{% else %}bg-green-100 border-green-400 text-green-700{% endif %} px-4 py-3 rounded">
+            {{ message }}
         </div>
-    </nav>
-
-    <!-- Main Content -->
-    <div class="container mx-auto px-4 py-8">
-        <div class="max-w-4xl mx-auto">
-            <div class="bg-white rounded-2xl shadow-lg p-8">
-                <form method="post" enctype="multipart/form-data">
-                    {% csrf_token %}
-                    
-                    <!-- Messages -->
-                    {% if messages %}
-                    <div class="mb-6">
-                        {% for message in messages %}
-                        <div class="{% if message.tags == 'error' %}bg-red-100 border-red-400 text-red-700{% else %}bg-green-100 border-green-400 text-green-700{% endif %} px-4 py-3 rounded mb-4">
-                            {{ message }}
-                        </div>
-                        {% endfor %}
-                    </div>
-                    {% endif %}
-
-                    <!-- Question Details -->
-                    <div class="mb-8">
-                        <h2 class="text-2xl font-bold text-gray-800 mb-6">Question Details</h2>
-                        
-                        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-                            <div>
-                                <label class="block text-sm font-medium text-gray-700 mb-2">Question Type</label>
-                                {{ question_form.question_type }}
-                            </div>
-                            <div>
-                                <label class="block text-sm font-medium text-gray-700 mb-2">Difficulty Level</label>
-                                {{ question_form.difficulty }}
-                            </div>
-                        </div>
-
-                        <div class="mt-6">
-                            <label class="block text-sm font-medium text-gray-700 mb-2">Question Text</label>
-                            {{ question_form.text }}
-                        </div>
-
-                        <div class="mt-6">
-                            <label class="block text-sm font-medium text-gray-700 mb-2">Explanation (Optional)</label>
-                            {{ question_form.explanation }}
-                        </div>
-
-                        <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mt-6">
-                            <div>
-                                <label class="block text-sm font-medium text-gray-700 mb-2">Points</label>
-                                {{ question_form.points }}
-                            </div>
-                            <div>
-                                <label class="block text-sm font-medium text-gray-700 mb-2">Question Bank (Optional)</label>
-                                {{ question_form.question_bank }}
-                            </div>
-                            <div>
-                                <label class="block text-sm font-medium text-gray-700 mb-2">Exam (Optional)</label>
-                                {{ question_form.exam }}
-                            </div>
-                        </div>
-
-                        <div class="mt-6">
-                            <label class="block text-sm font-medium text-gray-700 mb-2">Question Image (Optional)</label>
-                            {{ question_form.image }}
-                        </div>
-                    </div>
-
-                    <!-- Choices Section -->
-                    <div class="mb-8">
-                        <h2 class="text-2xl font-bold text-gray-800 mb-6">Answer Choices</h2>
-                        
-                        {{ choice_formset.management_form }}
-                        
-                        <div class="space-y-4">
-                            {% for form in choice_formset %}
-                            <div class="border border-gray-200 rounded-lg p-4">
-                                <div class="grid grid-cols-1 md:grid-cols-12 gap-4 items-center">
-                                    <div class="md:col-span-1">
-                                        <label class="block text-sm font-medium text-gray-700 mb-2">Correct?</label>
-                                        {{ form.is_correct }}
-                                    </div>
-                                    <div class="md:col-span-10">
-                                        <label class="block text-sm font-medium text-gray-700 mb-2">Choice Text</label>
-                                        {{ form.text }}
-                                    </div>
-                                    <div class="md:col-span-1">
-                                        <label class="block text-sm font-medium text-gray-700 mb-2">Delete</label>
-                                        {{ form.DELETE }}
-                                    </div>
-                                </div>
-                                {% for hidden in form.hidden_fields %}
-                                    {{ hidden }}
-                                {% endfor %}
-                            </div>
-                            {% endfor %}
-                        </div>
-                    </div>
-
-                    <!-- Form Actions -->
-                    <div class="flex justify-between items-center pt-6 border-t border-gray-200">
-                        <a href="{% url 'exam:teacher_questions' %}" class="bg-gray-500 text-white px-6 py-3 rounded-lg hover:bg-gray-600 transition duration-200">
-                            Cancel
-                        </a>
-                        <button type="submit" class="bg-green-600 text-white px-6 py-3 rounded-lg hover:bg-green-700 transition duration-200 font-semibold">
-                            <i class="fas fa-save mr-2"></i>Save Question
-                        </button>
-                    </div>
-                </form>
-            </div>
-
-            <!-- Help Section -->
-            <div class="bg-blue-50 rounded-2xl p-6 mt-8">
-                <h3 class="text-lg font-semibold text-blue-800 mb-4">
-                    <i class="fas fa-info-circle mr-2"></i>Tips for Creating Good Questions
-                </h3>
-                <ul class="text-blue-700 space-y-2">
-                    <li>• Write clear and concise question text</li>
-                    <li>• Make sure there's only one correct answer for multiple choice questions</li>
-                    <li>• Provide plausible distractors (wrong answers)</li>
-                    <li>• Use consistent difficulty levels</li>
-                    <li>• Add explanations to help students learn from mistakes</li>
-                </ul>
-            </div>
-        </div>
+        {% endfor %}
     </div>
+    {% endif %}
 
-    <style>
-        .form-control {
-            @apply w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent;
-        }
+    <form method="post" enctype="multipart/form-data">
+        {% csrf_token %}
         
-        .form-check-input {
-            @apply w-5 h-5 text-green-600 focus:ring-green-500 focus:ring-2;
-        }
-    </style>
-</body>
-</html>
+        <!-- Question Details -->
+        <div class="bg-white rounded-2xl shadow-lg p-6 mb-6">
+            <h2 class="text-2xl font-bold text-gray-800 mb-6 flex items-center">
+                <i class="fas fa-question-circle text-green-500 mr-3"></i>
+                Question Details
+            </h2>
+            
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-2">Question Type</label>
+                    {{ question_form.question_type }}
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-2">Difficulty Level</label>
+                    {{ question_form.difficulty }}
+                </div>
+            </div>
+
+            <div class="mt-6">
+                <label class="block text-sm font-medium text-gray-700 mb-2">Question Text</label>
+                {{ question_form.text }}
+            </div>
+
+            <div class="mt-6">
+                <label class="block text-sm font-medium text-gray-700 mb-2">Explanation (Optional)</label>
+                {{ question_form.explanation }}
+            </div>
+
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mt-6">
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-2">Points</label>
+                    {{ question_form.points }}
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-2">Question Bank (Optional)</label>
+                    {{ question_form.question_bank }}
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-2">Exam (Optional)</label>
+                    {{ question_form.exam }}
+                </div>
+            </div>
+
+            <div class="mt-6">
+                <label class="block text-sm font-medium text-gray-700 mb-2">Question Image (Optional)</label>
+                {{ question_form.image }}
+            </div>
+        </div>
+
+        <!-- Choices Section -->
+        <div class="bg-white rounded-2xl shadow-lg p-6 mb-6">
+            <h2 class="text-2xl font-bold text-gray-800 mb-6 flex items-center">
+                <i class="fas fa-list text-blue-500 mr-3"></i>
+                Answer Choices
+            </h2>
+            
+            {{ choice_formset.management_form }}
+            
+            <div class="space-y-4">
+                {% for form in choice_formset %}
+                <div class="border border-gray-200 rounded-lg p-4 bg-gray-50">
+                    <div class="grid grid-cols-1 md:grid-cols-12 gap-4 items-center">
+                        <div class="md:col-span-1">
+                            <label class="block text-sm font-medium text-gray-700 mb-2">Correct?</label>
+                            <div class="flex items-center justify-center">
+                                {{ form.is_correct }}
+                            </div>
+                        </div>
+                        <div class="md:col-span-10">
+                            <label class="block text-sm font-medium text-gray-700 mb-2">Choice Text</label>
+                            {{ form.text }}
+                        </div>
+                        <div class="md:col-span-1">
+                            <label class="block text-sm font-medium text-gray-700 mb-2">Delete</label>
+                            <div class="flex items-center justify-center">
+                                {{ form.DELETE }}
+                            </div>
+                        </div>
+                    </div>
+                    {% for hidden in form.hidden_fields %}
+                        {{ hidden }}
+                    {% endfor %}
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+
+        <!-- Form Actions -->
+        <div class="flex justify-between items-center pt-6">
+            <a href="{% url 'exam:teacher_questions' %}" class="bg-gray-500 text-white px-6 py-3 rounded-lg hover:bg-gray-600 transition duration-200 flex items-center">
+                <i class="fas fa-arrow-left mr-2"></i>
+                Cancel
+            </a>
+            <button type="submit" class="bg-green-600 text-white px-6 py-3 rounded-lg hover:bg-green-700 transition duration-200 font-semibold flex items-center">
+                <i class="fas fa-save mr-2"></i>Save Question
+            </button>
+        </div>
+    </form>
+
+    <!-- Help Section -->
+    <div class="bg-blue-50 rounded-2xl p-6">
+        <h3 class="text-lg font-semibold text-blue-800 mb-4">
+            <i class="fas fa-info-circle mr-2"></i>Tips for Creating Good Questions
+        </h3>
+        <ul class="text-blue-700 space-y-2">
+            <li>• Write clear and concise question text</li>
+            <li>• Make sure there's only one correct answer for multiple choice questions</li>
+            <li>• Provide plausible distractors (wrong answers)</li>
+            <li>• Use consistent difficulty levels</li>
+            <li>• Add explanations to help students learn from mistakes</li>
+        </ul>
+    </div>
+</div>
+
+<style>
+    input[type="text"],
+    input[type="number"],
+    textarea,
+    select {
+        width: 100%;
+        padding: 0.75rem;
+        border: 1px solid #d1d5db;
+        border-radius: 0.5rem;
+        font-size: 0.875rem;
+        transition: all 0.2s;
+    }
+    
+    input:focus,
+    textarea:focus,
+    select:focus {
+        outline: none;
+        border-color: #10b981;
+        box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.1);
+    }
+    
+    input[type="checkbox"] {
+        width: 1.25rem;
+        height: 1.25rem;
+        border-radius: 0.25rem;
+        border: 2px solid #d1d5db;
+        cursor: pointer;
+    }
+    
+    input[type="checkbox"]:checked {
+        background-color: #10b981;
+        border-color: #10b981;
+    }
+    
+    textarea {
+        min-height: 100px;
+        resize: vertical;
+    }
+</style>
+{% endblock %}

@@ -1,335 +1,289 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>{{ title }} - CBT System</title>
-    <script src="https://cdn.tailwindcss.com"></script>
-    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}{{ title }} - CBT System{% endblock %}
+
+{% block page_title %}{{ title }}{% endblock %}
+
+{% block extra_head %}
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
+<style>
+    .form-section {
+        animation: fadeIn 0.5s ease-in;
+    }
+    @keyframes fadeIn {
+        from { opacity: 0; transform: translateY(10px); }
+        to { opacity: 1; transform: translateY(0); }
+    }
+    .checkbox-card {
+        transition: all 0.2s;
+    }
+    .checkbox-card:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+    }
+    .checkbox-card input[type="checkbox"]:checked + label {
+        background-color: #dbeafe;
+        border-color: #3b82f6;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="max-w-6xl mx-auto space-y-6">
     
-    <!-- Flatpickr CSS -->
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
-    
-    <style>
-        .form-section {
-            animation: fadeIn 0.5s ease-in;
-        }
-        @keyframes fadeIn {
-            from { opacity: 0; transform: translateY(10px); }
-            to { opacity: 1; transform: translateY(0); }
-        }
-        .checkbox-card {
-            transition: all 0.2s;
-        }
-        .checkbox-card:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
-        }
-    </style>
-</head>
-<body class="bg-gray-50">
-    <!-- Navigation -->
-    <nav class="bg-gradient-to-r from-green-600 to-blue-600 text-white shadow-lg">
-        <div class="container mx-auto px-4">
-            <div class="flex justify-between items-center py-4">
-                <div class="flex items-center space-x-3">
-                    <i class="fas fa-graduation-cap text-2xl"></i>
-                    <div>
-                        <h1 class="text-xl font-bold">CBT System</h1>
-                        <p class="text-xs text-green-100">Teacher Portal</p>
-                    </div>
-                </div>
-                <div class="flex items-center space-x-4">
-                    <a href="{% url 'exam:teacher_dashboard' %}" 
-                       class="bg-white bg-opacity-20 hover:bg-opacity-30 px-4 py-2 rounded-lg transition duration-200">
-                        <i class="fas fa-arrow-left mr-2"></i>Back to Dashboard
-                    </a>
-                </div>
+    <!-- Header -->
+    <div class="bg-white rounded-2xl shadow-lg p-6">
+        <div class="flex items-center justify-between">
+            <div>
+                <h2 class="text-3xl font-bold text-gray-800">{{ title }}</h2>
+                <p class="text-gray-600 mt-1">Fill in the exam details and configure settings</p>
             </div>
-        </div>
-    </nav>
-
-    <!-- Main Content -->
-    <div class="container mx-auto px-4 py-8">
-        <div class="max-w-6xl mx-auto">
-            
-            <!-- Header -->
-            <div class="bg-white rounded-2xl shadow-lg p-6 mb-6">
-                <div class="flex items-center justify-between">
-                    <div>
-                        <h2 class="text-3xl font-bold text-gray-800">{{ title }}</h2>
-                        <p class="text-gray-600 mt-1">Fill in the exam details and configure settings</p>
-                    </div>
-                    <div class="w-16 h-16 bg-gradient-to-br from-green-500 to-blue-500 rounded-full flex items-center justify-center">
-                        <i class="fas fa-file-alt text-white text-2xl"></i>
-                    </div>
-                </div>
+            <div class="w-16 h-16 bg-gradient-to-br from-green-500 to-blue-500 rounded-full flex items-center justify-center">
+                <i class="fas fa-file-alt text-white text-2xl"></i>
             </div>
-
-            <!-- Form Errors -->
-            {% if form.errors %}
-            <div class="bg-red-50 border-l-4 border-red-500 p-4 mb-6 rounded-r-lg">
-                <div class="flex items-center mb-2">
-                    <i class="fas fa-exclamation-triangle text-red-500 mr-2"></i>
-                    <span class="font-semibold text-red-800">Please correct the errors below:</span>
-                </div>
-                <ul class="list-disc list-inside text-red-700 text-sm">
-                    {% for field in form %}
-                        {% for error in field.errors %}
-                            <li>{{ field.label }}: {{ error }}</li>
-                        {% endfor %}
-                    {% endfor %}
-                    {% for error in form.non_field_errors %}
-                        <li>{{ error }}</li>
-                    {% endfor %}
-                </ul>
-            </div>
-            {% endif %}
-
-            <!-- Form -->
-            <form method="post" id="examForm">
-                {% csrf_token %}
-                
-                <!-- Basic Information -->
-                <div class="bg-white rounded-2xl shadow-lg p-6 mb-6 form-section">
-                    <h3 class="text-xl font-bold text-gray-800 mb-4 flex items-center">
-                        <i class="fas fa-info-circle text-blue-500 mr-2"></i>
-                        Basic Information
-                    </h3>
-                    
-                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-                        <div class="md:col-span-2">
-                            <label class="block text-sm font-semibold text-gray-700 mb-2">
-                                Title <span class="text-red-500">*</span>
-                            </label>
-                            {{ form.title }}
-                            {% if form.title.help_text %}
-                            <p class="text-xs text-gray-500 mt-1">{{ form.title.help_text }}</p>
-                            {% endif %}
-                        </div>
-                        
-                        <div class="md:col-span-2">
-                            <label class="block text-sm font-semibold text-gray-700 mb-2">Description</label>
-                            {{ form.description }}
-                        </div>
-                        
-                        <div>
-                            <label class="block text-sm font-semibold text-gray-700 mb-2">
-                                Exam Type <span class="text-red-500">*</span>
-                            </label>
-                            {{ form.exam_type }}
-                        </div>
-                        
-                        <div>
-                            <label class="block text-sm font-semibold text-gray-700 mb-2">Subject</label>
-                            {{ form.subject }}
-                        </div>
-                        
-                        <div>
-                            <label class="block text-sm font-semibold text-gray-700 mb-2">Status</label>
-                            {{ form.status }}
-                        </div>
-                    </div>
-                </div>
-
-                <!-- Timing Settings -->
-                <div class="bg-white rounded-2xl shadow-lg p-6 mb-6 form-section">
-                    <h3 class="text-xl font-bold text-gray-800 mb-4 flex items-center">
-                        <i class="fas fa-clock text-orange-500 mr-2"></i>
-                        Timing Settings
-                    </h3>
-                    
-                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-                        <div>
-                            <label class="block text-sm font-semibold text-gray-700 mb-2">
-                                Duration (minutes) <span class="text-red-500">*</span>
-                            </label>
-                            {{ form.duration_minutes }}
-                            {% if form.duration_minutes.help_text %}
-                            <p class="text-xs text-gray-500 mt-1">{{ form.duration_minutes.help_text }}</p>
-                            {% endif %}
-                        </div>
-                        
-                        <div>
-                            <label class="block text-sm font-semibold text-gray-700 mb-2">
-                                Start Time <span class="text-red-500">*</span>
-                            </label>
-                            {{ form.start_time }}
-                        </div>
-                        
-                        <div>
-                            <label class="block text-sm font-semibold text-gray-700 mb-2">
-                                End Time <span class="text-red-500">*</span>
-                            </label>
-                            {{ form.end_time }}
-                        </div>
-                        
-                        <div>
-                            <label class="block text-sm font-semibold text-gray-700 mb-2">
-                                Result Publish Time
-                            </label>
-                            {{ form.result_publish_time }}
-                            <p class="text-xs text-gray-500 mt-1">When students can see their results</p>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- Exam Settings -->
-                <div class="bg-white rounded-2xl shadow-lg p-6 mb-6 form-section">
-                    <h3 class="text-xl font-bold text-gray-800 mb-4 flex items-center">
-                        <i class="fas fa-cog text-purple-500 mr-2"></i>
-                        Exam Settings
-                    </h3>
-                    
-                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
-                        <div>
-                            <label class="block text-sm font-semibold text-gray-700 mb-2">
-                                Passing Score (%) <span class="text-red-500">*</span>
-                            </label>
-                            {{ form.passing_score }}
-                            {% if form.passing_score.help_text %}
-                            <p class="text-xs text-gray-500 mt-1">{{ form.passing_score.help_text }}</p>
-                            {% endif %}
-                        </div>
-                        
-                        <div>
-                            <label class="block text-sm font-semibold text-gray-700 mb-2">
-                                Max Attempts <span class="text-red-500">*</span>
-                            </label>
-                            {{ form.max_attempts }}
-                            {% if form.max_attempts.help_text %}
-                            <p class="text-xs text-gray-500 mt-1">{{ form.max_attempts.help_text }}</p>
-                            {% endif %}
-                        </div>
-                    </div>
-                    
-                    <!-- Checkbox Options -->
-                    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                        <div class="checkbox-card bg-gray-50 border border-gray-200 rounded-lg p-4 cursor-pointer hover:border-blue-500">
-                            <label class="flex items-start space-x-3 cursor-pointer">
-                                {{ form.shuffle_questions }}
-                                <div>
-                                    <span class="block text-sm font-semibold text-gray-700">Shuffle Questions</span>
-                                    <span class="text-xs text-gray-500">Randomize question order</span>
-                                </div>
-                            </label>
-                        </div>
-                        
-                        <div class="checkbox-card bg-gray-50 border border-gray-200 rounded-lg p-4 cursor-pointer hover:border-blue-500">
-                            <label class="flex items-start space-x-3 cursor-pointer">
-                                {{ form.shuffle_choices }}
-                                <div>
-                                    <span class="block text-sm font-semibold text-gray-700">Shuffle Choices</span>
-                                    <span class="text-xs text-gray-500">Randomize answer options</span>
-                                </div>
-                            </label>
-                        </div>
-                        
-                        <div class="checkbox-card bg-gray-50 border border-gray-200 rounded-lg p-4 cursor-pointer hover:border-blue-500">
-                            <label class="flex items-start space-x-3 cursor-pointer">
-                                {{ form.show_result_immediately }}
-                                <div>
-                                    <span class="block text-sm font-semibold text-gray-700">Show Result Immediately</span>
-                                    <span class="text-xs text-gray-500">Display score after submission</span>
-                                </div>
-                            </label>
-                        </div>
-                        
-                        <div class="checkbox-card bg-gray-50 border border-gray-200 rounded-lg p-4 cursor-pointer hover:border-blue-500">
-                            <label class="flex items-start space-x-3 cursor-pointer">
-                                {{ form.allow_back_navigation }}
-                            <div>
-                                    <span class="block text-sm font-semibold text-gray-700">Allow Back Navigation</span>
-                                    <span class="text-xs text-gray-500">Students can go back to previous questions</span>
-                                </div>
-                            </label>
-                        </div>
-                        
-                        <div class="checkbox-card bg-gray-50 border border-gray-200 rounded-lg p-4 cursor-pointer hover:border-blue-500">
-                            <label class="flex items-start space-x-3 cursor-pointer">
-                                {{ form.require_webcam }}
-                                <div>
-                                    <span class="block text-sm font-semibold text-gray-700">Require Webcam</span>
-                                    <span class="text-xs text-gray-500">Enable webcam monitoring</span>
-                                </div>
-                            </label>
-                        </div>
-                        
-                        <div class="checkbox-card bg-gray-50 border border-gray-200 rounded-lg p-4 cursor-pointer hover:border-blue-500">
-                            <label class="flex items-start space-x-3 cursor-pointer">
-                                {{ form.require_microphone }}
-                                <div>
-                                    <span class="block text-sm font-semibold text-gray-700">Require Microphone</span>
-                                    <span class="text-xs text-gray-500">Enable audio monitoring</span>
-                                </div>
-                            </label>
-                        </div>
-                        
-                        <div class="checkbox-card bg-gray-50 border border-gray-200 rounded-lg p-4 cursor-pointer hover:border-blue-500">
-                            <label class="flex items-start space-x-3 cursor-pointer">
-                                {{ form.enable_proctoring }}
-                                <div>
-                                    <span class="block text-sm font-semibold text-gray-700">Enable Proctoring</span>
-                                    <span class="text-xs text-gray-500">Advanced exam monitoring</span>
-                                </div>
-                            </label>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- Access Control -->
-                <div class="bg-white rounded-2xl shadow-lg p-6 mb-6 form-section">
-                    <h3 class="text-xl font-bold text-gray-800 mb-4 flex items-center">
-                        <i class="fas fa-users text-green-500 mr-2"></i>
-                        Access Control
-                    </h3>
-                    
-                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-                        <div>
-                            <label class="block text-sm font-semibold text-gray-700 mb-2">
-                                Allowed Departments
-                            </label>
-                            {{ form.allowed_departments }}
-                            <p class="text-xs text-gray-500 mt-1">Leave empty to allow all departments</p>
-                        </div>
-                        
-                        <div>
-                            <label class="block text-sm font-semibold text-gray-700 mb-2">
-                                Allowed Users
-                            </label>
-                            {{ form.allowed_users }}
-                            <p class="text-xs text-gray-500 mt-1">Leave empty to allow all users from selected departments</p>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- Submit Buttons -->
-                <div class="flex space-x-4">
-                    <button type="submit" class="bg-green-600 text-white px-8 py-3 rounded-lg hover:bg-green-700 transition duration-200 font-semibold flex items-center">
-                        <i class="fas fa-save mr-2"></i>
-                        Save Exam
-                    </button>
-                    
-                    <button type="submit" name="save_and_add_questions" class="bg-blue-600 text-white px-8 py-3 rounded-lg hover:bg-blue-700 transition duration-200 font-semibold flex items-center">
-                        <i class="fas fa-arrow-right mr-2"></i>
-                        Save & Add Questions
-                    </button>
-                    
-                    <a href="{% url 'exam:teacher_dashboard' %}" class="bg-gray-500 text-white px-8 py-3 rounded-lg hover:bg-gray-600 transition duration-200 font-semibold flex items-center">
-                        <i class="fas fa-times mr-2"></i>
-                        Cancel
-                    </a>
-                </div>
-            </form>
         </div>
     </div>
-</div>
 
-<!-- Flatpickr JavaScript -->
+    <!-- Form Errors -->
+    {% if form.errors %}
+    <div class="bg-red-50 border-l-4 border-red-500 p-4 rounded-r-lg">
+        <div class="flex items-center mb-2">
+            <i class="fas fa-exclamation-triangle text-red-500 mr-2"></i>
+            <span class="font-semibold text-red-800">Please correct the errors below:</span>
+        </div>
+        <ul class="list-disc list-inside text-red-700 text-sm">
+            {% for field in form %}
+                {% for error in field.errors %}
+                    <li>{{ field.label }}: {{ error }}</li>
+                {% endfor %}
+            {% endfor %}
+            {% for error in form.non_field_errors %}
+                <li>{{ error }}</li>
+            {% endfor %}
+        </ul>
+    </div>
+    {% endif %}
+
+    <!-- Form -->
+    <form method="post" id="examForm">
+        {% csrf_token %}
+        
+        <!-- Basic Information -->
+        <div class="bg-white rounded-2xl shadow-lg p-6 mb-6 form-section">
+            <h3 class="text-xl font-bold text-gray-800 mb-4 flex items-center">
+                <i class="fas fa-info-circle text-blue-500 mr-2"></i>
+                Basic Information
+            </h3>
+            
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div class="md:col-span-2">
+                    <label class="block text-sm font-semibold text-gray-700 mb-2">
+                        Title <span class="text-red-500">*</span>
+                    </label>
+                    {{ form.title }}
+                    {% if form.title.help_text %}
+                    <p class="text-xs text-gray-500 mt-1">{{ form.title.help_text }}</p>
+                    {% endif %}
+                </div>
+                
+                <div class="md:col-span-2">
+                    <label class="block text-sm font-semibold text-gray-700 mb-2">Description</label>
+                    {{ form.description }}
+                </div>
+                
+                <div>
+                    <label class="block text-sm font-semibold text-gray-700 mb-2">
+                        Exam Type <span class="text-red-500">*</span>
+                    </label>
+                    {{ form.exam_type }}
+                </div>
+                
+                <div>
+                    <label class="block text-sm font-semibold text-gray-700 mb-2">Subject</label>
+                    {{ form.subject }}
+                </div>
+                
+                <div>
+                    <label class="block text-sm font-semibold text-gray-700 mb-2">Status</label>
+                    {{ form.status }}
+                </div>
+            </div>
+        </div>
+
+        <!-- Timing Settings -->
+        <div class="bg-white rounded-2xl shadow-lg p-6 mb-6 form-section">
+            <h3 class="text-xl font-bold text-gray-800 mb-4 flex items-center">
+                <i class="fas fa-clock text-orange-500 mr-2"></i>
+                Timing Settings
+            </h3>
+            
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div>
+                    <label class="block text-sm font-semibold text-gray-700 mb-2">
+                        Duration (minutes) <span class="text-red-500">*</span>
+                    </label>
+                    {{ form.duration_minutes }}
+                </div>
+                
+                <div>
+                    <label class="block text-sm font-semibold text-gray-700 mb-2">
+                        Start Time <span class="text-red-500">*</span>
+                    </label>
+                    {{ form.start_time }}
+                </div>
+                
+                <div>
+                    <label class="block text-sm font-semibold text-gray-700 mb-2">
+                        End Time <span class="text-red-500">*</span>
+                    </label>
+                    {{ form.end_time }}
+                </div>
+                
+                <div>
+                    <label class="block text-sm font-semibold text-gray-700 mb-2">
+                        Result Publish Time
+                    </label>
+                    {{ form.result_publish_time }}
+                    <p class="text-xs text-gray-500 mt-1">When students can see their results</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Exam Settings -->
+        <div class="bg-white rounded-2xl shadow-lg p-6 mb-6 form-section">
+            <h3 class="text-xl font-bold text-gray-800 mb-4 flex items-center">
+                <i class="fas fa-cog text-purple-500 mr-2"></i>
+                Exam Settings
+            </h3>
+            
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+                <div>
+                    <label class="block text-sm font-semibold text-gray-700 mb-2">
+                        Passing Score (%) <span class="text-red-500">*</span>
+                    </label>
+                    {{ form.passing_score }}
+                </div>
+                
+                <div>
+                    <label class="block text-sm font-semibold text-gray-700 mb-2">
+                        Max Attempts <span class="text-red-500">*</span>
+                    </label>
+                    {{ form.max_attempts }}
+                </div>
+            </div>
+            
+            <!-- Checkbox Options -->
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                <div class="checkbox-card bg-gray-50 border border-gray-200 rounded-lg p-4 cursor-pointer hover:border-blue-500">
+                    <label class="flex items-start space-x-3 cursor-pointer">
+                        {{ form.shuffle_questions }}
+                        <div>
+                            <span class="block text-sm font-semibold text-gray-700">Shuffle Questions</span>
+                            <span class="text-xs text-gray-500">Randomize question order</span>
+                        </div>
+                    </label>
+                </div>
+                
+                <div class="checkbox-card bg-gray-50 border border-gray-200 rounded-lg p-4 cursor-pointer hover:border-blue-500">
+                    <label class="flex items-start space-x-3 cursor-pointer">
+                        {{ form.shuffle_choices }}
+                        <div>
+                            <span class="block text-sm font-semibold text-gray-700">Shuffle Choices</span>
+                            <span class="text-xs text-gray-500">Randomize answer options</span>
+                        </div>
+                    </label>
+                </div>
+                
+                <div class="checkbox-card bg-gray-50 border border-gray-200 rounded-lg p-4 cursor-pointer hover:border-blue-500">
+                    <label class="flex items-start space-x-3 cursor-pointer">
+                        {{ form.show_result_immediately }}
+                        <div>
+                            <span class="block text-sm font-semibold text-gray-700">Show Result Immediately</span>
+                            <span class="text-xs text-gray-500">Display score after submission</span>
+                        </div>
+                    </label>
+                </div>
+                
+                <div class="checkbox-card bg-gray-50 border border-gray-200 rounded-lg p-4 cursor-pointer hover:border-blue-500">
+                    <label class="flex items-start space-x-3 cursor-pointer">
+                        {{ form.allow_back_navigation }}
+                        <div>
+                            <span class="block text-sm font-semibold text-gray-700">Allow Back Navigation</span>
+                            <span class="text-xs text-gray-500">Students can go back</span>
+                        </div>
+                    </label>
+                </div>
+                
+                <div class="checkbox-card bg-gray-50 border border-gray-200 rounded-lg p-4 cursor-pointer hover:border-blue-500">
+                    <label class="flex items-start space-x-3 cursor-pointer">
+                        {{ form.require_webcam }}
+                        <div>
+                            <span class="block text-sm font-semibold text-gray-700">Require Webcam</span>
+                            <span class="text-xs text-gray-500">Enable webcam monitoring</span>
+                        </div>
+                    </label>
+                </div>
+                
+                <div class="checkbox-card bg-gray-50 border border-gray-200 rounded-lg p-4 cursor-pointer hover:border-blue-500">
+                    <label class="flex items-start space-x-3 cursor-pointer">
+                        {{ form.require_microphone }}
+                        <div>
+                            <span class="block text-sm font-semibold text-gray-700">Require Microphone</span>
+                            <span class="text-xs text-gray-500">Enable audio monitoring</span>
+                        </div>
+                    </label>
+                </div>
+            </div>
+        </div>
+
+        <!-- Access Control -->
+        <div class="bg-white rounded-2xl shadow-lg p-6 mb-6 form-section">
+            <h3 class="text-xl font-bold text-gray-800 mb-4 flex items-center">
+                <i class="fas fa-users text-green-500 mr-2"></i>
+                Access Control
+            </h3>
+            
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div>
+                    <label class="block text-sm font-semibold text-gray-700 mb-2">
+                        Allowed Departments
+                    </label>
+                    {{ form.allowed_departments }}
+                    <p class="text-xs text-gray-500 mt-1">Leave empty to allow all departments</p>
+                </div>
+                
+                <div>
+                    <label class="block text-sm font-semibold text-gray-700 mb-2">
+                        Allowed Users
+                    </label>
+                    {{ form.allowed_users }}
+                    <p class="text-xs text-gray-500 mt-1">Leave empty to allow all users</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Submit Buttons -->
+        <div class="flex space-x-4">
+            <button type="submit" class="bg-green-600 text-white px-8 py-3 rounded-lg hover:bg-green-700 transition duration-200 font-semibold flex items-center">
+                <i class="fas fa-save mr-2"></i>
+                Save Exam
+            </button>
+            
+            <a href="{% url 'exam:teacher_dashboard' %}" class="bg-gray-500 text-white px-8 py-3 rounded-lg hover:bg-gray-600 transition duration-200 font-semibold flex items-center">
+                <i class="fas fa-times mr-2"></i>
+                Cancel
+            </a>
+        </div>
+    </form>
+</div>
+{% endblock %}
+
+{% block scripts %}
 <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
 <script>
     document.addEventListener('DOMContentLoaded', function() {
-        // Initialize Flatpickr for datetime fields
+        // Initialize Flatpickr
         flatpickr('#id_start_time', {
             enableTime: true,
             dateFormat: 'Y-m-d H:i',
@@ -350,56 +304,8 @@
             time_24hr: true,
             minDate: 'today'
         });
-        
-        flatpickr('#id_token_expiry', {
-            enableTime: true,
-            dateFormat: 'Y-m-d H:i',
-            time_24hr: true,
-            minDate: 'today'
-        });
 
-        // Auto-generate token preview
-        const autoGenerateCheckbox = document.querySelector('input[name="auto_generate_token"]');
-        const customTokenInput = document.querySelector('input[name="custom_token"]');
-        const statusSelect = document.querySelector('select[name="status"]');
-        
-        function updateTokenPreview() {
-            const isAutoGenerate = autoGenerateCheckbox?.checked;
-            const customToken = customTokenInput?.value;
-            const status = statusSelect?.value;
-            
-            if (customTokenInput) {
-                customTokenInput.disabled = isAutoGenerate;
-                if (isAutoGenerate) {
-                    customTokenInput.value = '';
-                }
-            }
-            
-            // Show token info if status is published
-            if (status === 'published' && (isAutoGenerate || customToken)) {
-                console.log('Token will be generated/used for published exam');
-            }
-        }
-        
-        if (autoGenerateCheckbox) {
-            autoGenerateCheckbox.addEventListener('change', updateTokenPreview);
-        }
-        
-        if (customTokenInput) {
-            customTokenInput.addEventListener('input', function(e) {
-                // Format to uppercase and max 6 characters
-                e.target.value = e.target.value.toUpperCase().slice(0, 6);
-            });
-        }
-        
-        if (statusSelect) {
-            statusSelect.addEventListener('change', updateTokenPreview);
-        }
-        
-        // Initial update
-        updateTokenPreview();
-
-        // Validate form before submit
+        // Form validation
         const form = document.querySelector('form');
         form?.addEventListener('submit', function(e) {
             const startTime = document.querySelector('#id_start_time')?.value;
@@ -411,7 +317,7 @@
                 
                 if (end <= start) {
                     e.preventDefault();
-                    alert('End time must be after start time!');
+                    showToast('End time must be after start time!', 'error');
                     return false;
                 }
             }
@@ -419,12 +325,12 @@
             const passingScore = document.querySelector('input[name="passing_score"]')?.value;
             if (passingScore && (passingScore < 0 || passingScore > 100)) {
                 e.preventDefault();
-                alert('Passing score must be between 0 and 100!');
+                showToast('Passing score must be between 0 and 100!', 'error');
                 return false;
             }
         });
 
-        // Add animation to form sections
+        // Animation
         const formSections = document.querySelectorAll('.form-section');
         formSections.forEach((section, index) => {
             section.style.opacity = '0';
@@ -440,7 +346,6 @@
 </script>
 
 <style>
-    /* Custom styles for form inputs */
     input[type="text"],
     input[type="number"],
     input[type="datetime-local"],
@@ -484,5 +389,4 @@
         min-height: 150px;
     }
 </style>
-</body>
-</html>
+{% endblock %}
