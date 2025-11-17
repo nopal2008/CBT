@@ -45,6 +45,7 @@ urlpatterns = [
     path('teacher/question-banks/<int:bank_id>/', views.question_bank_detail, name='question_bank_detail'),
 
     # ✅ EXAM CRUD - NEW
+    path('teacher/exams/', views.exam_list, name='exam_list'),  
     path('teacher/exams/create/', views.create_exam, name='create_exam'),
     path('teacher/exams/<int:exam_id>/', views.exam_detail, name='exam_detail'),
     path('teacher/exams/<int:exam_id>/edit/', views.edit_exam, name='edit_exam'),
