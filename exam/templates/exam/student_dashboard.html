@@ -214,10 +214,10 @@
                             </div>
                         </div>
 
-                        <a href="{% url 'exam:take_exam' exam.id %}" 
+                        <button onclick="showTokenPrompt({{ exam.id }}, '{{ exam.title|escapejs }}')" 
                            class="w-full bg-green-600 text-white text-center py-2 rounded-lg hover:bg-green-700 transition duration-200 font-semibold block transform hover:scale-105">
-                            Start Exam
-                        </a>
+                            <i class="fas fa-key mr-2"></i>Start Exam
+                        </button>
                     </div>
                     {% endfor %}
                 </div>
@@ -372,6 +372,72 @@
         </div>
     </div>
 </div>
+
+<!-- Token Input Modal -->
+<div id="tokenModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 hidden">
+    <div class="bg-white rounded-2xl shadow-2xl max-w-md w-full mx-4 transform transition-all">
+        <!-- Modal Header -->
+        <div class="bg-gradient-to-r from-blue-500 to-purple-600 px-6 py-4 rounded-t-2xl">
+            <div class="flex items-center justify-between">
+                <h3 class="text-xl font-bold text-white flex items-center">
+                    <i class="fas fa-key mr-2"></i>Enter Exam Token
+                </h3>
+                <button onclick="closeTokenModal()" class="text-white hover:text-gray-200">
+                    <i class="fas fa-times text-xl"></i>
+                </button>
+            </div>
+        </div>
+        
+        <!-- Modal Body -->
+        <div class="p-6">
+            <div class="mb-6">
+                <p class="text-gray-700 mb-2">Exam:</p>
+                <p id="modalExamTitle" class="text-lg font-bold text-gray-900"></p>
+            </div>
+            
+            <div class="mb-6">
+                <label class="block text-sm font-semibold text-gray-700 mb-2">
+                    <i class="fas fa-ticket-alt mr-1"></i>Access Token
+                </label>
+                <input type="hidden" id="tokenExamId" value="">
+                <input 
+                    type="text" 
+                    id="tokenInput"
+                    maxlength="6"
+                    placeholder="Enter 6-character token"
+                    class="w-full px-4 py-3 border-2 border-gray-300 rounded-lg focus:border-blue-500 focus:outline-none text-center text-2xl font-bold tracking-widest uppercase"
+                    oninput="this.value = this.value.toUpperCase()"
+                >
+                <p class="text-xs text-gray-500 mt-2 text-center">
+                    <i class="fas fa-info-circle mr-1"></i>Enter the 6-character token to access this exam
+                </p>
+            </div>
+            
+            <!-- Info Box -->
+            <div class="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-6">
+                <div class="flex items-start">
+                    <i class="fas fa-lightbulb text-blue-500 mt-1 mr-3"></i>
+                    <div class="text-sm text-blue-800">
+                        <p class="font-semibold mb-1">Don't have a token?</p>
+                        <p>Check the <span class="font-semibold">Available Tokens</span> section in My Exams page.</p>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Action Buttons -->
+            <div class="flex space-x-3">
+                <button onclick="goToMyExams()" 
+                        class="flex-1 bg-gray-200 text-gray-700 py-3 px-4 rounded-lg hover:bg-gray-300 transition duration-200 font-semibold">
+                    <i class="fas fa-list mr-2"></i>My Exams
+                </button>
+                <button onclick="submitToken()" 
+                        class="flex-1 bg-gradient-to-r from-blue-500 to-purple-600 text-white py-3 px-4 rounded-lg hover:from-blue-600 hover:to-purple-700 transition duration-200 font-semibold">
+                    <i class="fas fa-check-circle mr-2"></i>Validate & Start
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
 {% endblock %}
 
 {% block scripts %}
@@ -403,6 +469,67 @@
             card.addEventListener('mouseleave', function() {
                 this.style.transform = 'translateY(0)';
             });
+        });
+        
+        // Token prompt modal functionality
+        window.showTokenPrompt = function(examId, examTitle) {
+            const modal = document.getElementById('tokenModal');
+            document.getElementById('modalExamTitle').textContent = examTitle;
+            document.getElementById('tokenExamId').value = examId;
+            document.getElementById('tokenInput').value = '';
+            modal.classList.remove('hidden');
+            document.getElementById('tokenInput').focus();
+        };
+        
+        window.closeTokenModal = function() {
+            document.getElementById('tokenModal').classList.add('hidden');
+        };
+        
+        window.submitToken = function() {
+            const examId = document.getElementById('tokenExamId').value;
+            const token = document.getElementById('tokenInput').value.trim().toUpperCase();
+            
+            if (!token) {
+                showNotification('Please enter a token', 'error');
+                return;
+            }
+            
+            if (token.length !== 6) {
+                showNotification('Token must be 6 characters', 'error');
+                return;
+            }
+            
+            // Redirect to take_exam with token (using correct URL pattern)
+            window.location.href = `/student/exam/${examId}/?token=${token}`;
+        };
+        
+        window.goToMyExams = function() {
+            window.location.href = '{% url "exam:my_exams" %}';
+        };
+        
+        // Show notification
+        function showNotification(message, type) {
+            const notification = document.createElement('div');
+            let bgColor = type === 'success' ? 'bg-green-500' : 'bg-red-500';
+            notification.className = `fixed top-6 right-6 px-6 py-3 rounded-lg shadow-lg text-white font-semibold z-50 ${bgColor}`;
+            notification.textContent = message;
+            document.body.appendChild(notification);
+            
+            setTimeout(() => {
+                notification.style.opacity = '0';
+                notification.style.transition = 'opacity 0.3s';
+                setTimeout(() => notification.remove(), 300);
+            }, 3000);
+        }
+        
+        // Handle Enter key in token input
+        document.addEventListener('keydown', function(e) {
+            if (e.key === 'Enter' && document.getElementById('tokenModal').classList.contains('hidden') === false) {
+                submitToken();
+            }
+            if (e.key === 'Escape') {
+                closeTokenModal();
+            }
         });
     });
 </script>

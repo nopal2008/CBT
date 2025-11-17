@@ -294,6 +294,46 @@ def take_exam(request, exam_id):
     if request.user.user_type != 'student':
         return redirect('exam_access_denied')
     
+    # ===== VALIDASI TOKEN (NEW) =====
+    token_code = request.GET.get('token') or request.POST.get('token') or request.session.get(f'exam_token_{exam_id}')
+    
+    if not token_code:
+        # Redirect to token input page
+        messages.warning(request, 'Please enter a valid exam token to access this exam.')
+        return redirect('exam:my_exams')
+    
+    # Validate token
+    now = timezone.now()
+    try:
+        token = ExamToken.objects.get(
+            token=token_code.upper(),
+            status='active',
+            expires_at__gte=now
+        )
+        
+        # Check if token is valid for this exam
+        if not token.is_global and token.exam.id != exam_id:
+            messages.error(request, 'This token is not valid for this exam.')
+            return redirect('exam:my_exams')
+        
+        # Check if token has reached max usage
+        if token.used_count >= token.max_usage:
+            messages.error(request, 'This token has reached its maximum usage limit.')
+            return redirect('exam:my_exams')
+        
+        # Token valid - save to session for future requests
+        request.session[f'exam_token_{exam_id}'] = token_code.upper()
+        
+        # Increment token usage if this is a new session
+        if not request.session.get(f'token_counted_{exam_id}_{token_code}'):
+            token.used_count += 1
+            token.save()
+            request.session[f'token_counted_{exam_id}_{token_code}'] = True
+        
+    except ExamToken.DoesNotExist:
+        messages.error(request, 'Invalid or expired token. Please check your token and try again.')
+        return redirect('exam:my_exams')
+    
     # Check exam aavailability
     now = timezone.now()
     

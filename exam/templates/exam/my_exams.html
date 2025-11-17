@@ -343,9 +343,9 @@
     // Start exam with token
     function startExamWithToken(token, examId) {
         showLoading();
-        // For normal tokens, redirect directly to exam
+        // For normal tokens, redirect directly to exam (using correct URL pattern)
         if (examId) {
-            window.location.href = '/student/exam/' + examId + '/take/?token=' + token;
+            window.location.href = '/student/exam/' + examId + '/?token=' + token;
         } else {
             validateToken(token);
         }
