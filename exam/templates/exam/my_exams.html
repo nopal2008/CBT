@@ -68,7 +68,7 @@
         </div>
     </div>
 
-    <!-- Token Access Section -->
+    <!-- Available Exam Tokens Section -->
     <div class="bg-white rounded-2xl shadow-lg p-6">
         <div class="flex items-center justify-between mb-6">
             <h2 class="text-2xl font-bold text-gray-800 flex items-center">
@@ -87,16 +87,28 @@
                 <!-- Token Header -->
                 <div class="flex justify-between items-start mb-4">
                     <div class="flex items-center space-x-3">
-                        <div class="w-12 h-12 bg-purple-500 rounded-lg flex items-center justify-center">
-                            <i class="fas fa-key text-white"></i>
+                        <div class="w-12 h-12 {% if token.is_global %}bg-gradient-to-br from-yellow-500 to-orange-500{% else %}bg-purple-500{% endif %} rounded-lg flex items-center justify-center">
+                            <i class="fas {% if token.is_global %}fa-globe{% else %}fa-key{% endif %} text-white"></i>
                         </div>
                         <div>
-                            <h3 class="font-bold text-gray-800 text-lg">{{ token.exam.title }}</h3>
-                            <p class="text-sm text-gray-600">{{ token.exam.subject.name|default:"General" }}</p>
+                            <h3 class="font-bold text-gray-800 text-lg">
+                                {% if token.is_global %}
+                                    Global Token
+                                {% else %}
+                                    {{ token.exam.title }}
+                                {% endif %}
+                            </h3>
+                            <p class="text-sm text-gray-600">
+                                {% if token.is_global %}
+                                    All Exams
+                                {% else %}
+                                    {{ token.exam.subject.name|default:"General" }}
+                                {% endif %}
+                            </p>
                         </div>
                     </div>
-                    <span class="bg-green-500 text-white px-3 py-1 rounded-full text-sm font-semibold token-refresh">
-                        Active
+                    <span class="{% if token.is_global %}bg-gradient-to-r from-yellow-500 to-orange-500{% else %}bg-green-500{% endif %} text-white px-3 py-1 rounded-full text-sm font-semibold token-refresh">
+                        {% if token.is_global %}Global{% else %}Active{% endif %}
                     </span>
                 </div>
 
@@ -105,16 +117,18 @@
                     <label class="block text-sm font-medium text-gray-700 mb-2">Access Token</label>
                     <div class="flex items-center space-x-2">
                         <div class="flex-1 bg-white border border-purple-300 rounded-lg p-3">
-                            <code class="text-2xl font-bold text-purple-600 tracking-wider">{{ token.token }}</code>
+                            <code class="text-2xl font-bold {% if token.is_global %}text-orange-600{% else %}text-purple-600{% endif %} tracking-wider">{{ token.token }}</code>
                         </div>
-                        <button onclick="copyToClipboard('{{ token.token }}')" 
-                                class="bg-purple-600 text-white p-3 rounded-lg hover:bg-purple-700 transition duration-200">
+                        <button onclick="copyToken('{{ token.token }}')" 
+                                class="{% if token.is_global %}bg-gradient-to-r from-yellow-500 to-orange-500 hover:from-yellow-600 hover:to-orange-600{% else %}bg-purple-600 hover:bg-purple-700{% endif %} text-white p-3 rounded-lg transition duration-200" 
+                                title="Copy token">
                             <i class="fas fa-copy"></i>
                         </button>
                     </div>
                 </div>
 
                 <!-- Exam Information -->
+                {% if not token.is_global %}
                 <div class="grid grid-cols-2 gap-3 mb-4 text-sm">
                     <div class="text-center bg-white rounded-lg p-2">
                         <p class="text-gray-600">Duration</p>
@@ -133,6 +147,21 @@
                         <p class="font-semibold text-blue-600">{{ token.used_count }}/{{ token.max_usage }}</p>
                     </div>
                 </div>
+                {% else %}
+                <div class="bg-gradient-to-r from-yellow-50 to-orange-50 border border-yellow-200 rounded-lg p-3 mb-4">
+                    <div class="flex items-center text-sm">
+                        <i class="fas fa-info-circle text-yellow-600 mr-2"></i>
+                        <div>
+                            <p class="font-semibold text-yellow-800">Global Access Token</p>
+                            <p class="text-yellow-700 text-xs">Can be used for any available exam</p>
+                        </div>
+                    </div>
+                    <div class="mt-2 text-center bg-white rounded-lg p-2">
+                        <p class="text-gray-600 text-sm">Used</p>
+                        <p class="font-semibold text-orange-600">{{ token.used_count }}/{{ token.max_usage }}</p>
+                    </div>
+                </div>
+                {% endif %}
 
                 <!-- Countdown Timer -->
                 <div class="bg-yellow-50 border border-yellow-200 rounded-lg p-3 mb-4">
@@ -150,7 +179,14 @@
 
                 <!-- Action Buttons -->
                 <div class="flex space-x-2">
-                    <button onclick="startExamWithToken('{{ token.token }}')" 
+                    {% if token.is_global %}
+                    <button onclick="showTokenInfo('{{ token.token }}')" 
+                            class="flex-1 bg-gradient-to-r from-yellow-500 to-orange-500 text-white py-3 rounded-lg hover:from-yellow-600 hover:to-orange-600 transition duration-200 font-semibold flex items-center justify-center space-x-2">
+                        <i class="fas fa-info-circle"></i>
+                        <span>Select Exam</span>
+                    </button>
+                    {% else %}
+                    <button onclick="startExamWithToken('{{ token.token }}', {{ token.exam.id }})" 
                             class="flex-1 bg-green-600 text-white py-3 rounded-lg hover:bg-green-700 transition duration-200 font-semibold flex items-center justify-center space-x-2">
                         <i class="fas fa-play"></i>
                         <span>Start Exam</span>
@@ -159,6 +195,7 @@
                             class="bg-blue-600 text-white px-4 py-3 rounded-lg hover:bg-blue-700 transition duration-200">
                         <i class="fas fa-info"></i>
                     </button>
+                    {% endif %}
                 </div>
             </div>
             {% endfor %}
@@ -186,7 +223,7 @@
         {% endif %}
     </div>
 
-    <!-- Manual Token Input Section -->
+    {% comment %} <!-- Manual Token Input Section -->
     <div class="bg-white rounded-2xl shadow-lg p-6">
         <h2 class="text-2xl font-bold text-gray-800 mb-6 flex items-center">
             <i class="fas fa-keyboard text-blue-500 mr-3"></i>
@@ -260,7 +297,7 @@
                 <p class="text-blue-100 text-sm">Page automatically updates when new tokens are available</p>
             </div>
         </div>
-    </div>
+    </div> {% endcomment %}
 </div>
 
 <!-- Loading Spinner -->
@@ -282,18 +319,43 @@
     }
 
     // Copy token to clipboard
-    function copyToClipboard(token) {
+    function copyToken(token) {
         navigator.clipboard.writeText(token).then(() => {
-            showNotification('Token copied to clipboard!', 'success');
+            showNotification('✓ Token copied to clipboard!', 'success');
         }).catch(() => {
-            showNotification('Failed to copy token', 'error');
+            // Fallback for older browsers
+            const textarea = document.createElement('textarea');
+            textarea.value = token;
+            textarea.style.position = 'fixed';
+            textarea.style.opacity = '0';
+            document.body.appendChild(textarea);
+            textarea.select();
+            try {
+                document.execCommand('copy');
+                showNotification('✓ Token copied to clipboard!', 'success');
+            } catch (err) {
+                showNotification('✗ Failed to copy token', 'error');
+            }
+            document.body.removeChild(textarea);
         });
     }
 
     // Start exam with token
-    function startExamWithToken(token) {
+    function startExamWithToken(token, examId) {
         showLoading();
-        validateToken(token);
+        // For normal tokens, redirect directly to exam
+        if (examId) {
+            window.location.href = '/student/exam/' + examId + '/take/?token=' + token;
+        } else {
+            validateToken(token);
+        }
+    }
+    
+    // Show token info for global tokens
+    function showTokenInfo(token) {
+        showNotification('ℹ Global token can be used for any exam. Select an exam below!', 'info');
+        // Scroll to available exams section
+        document.querySelector('.exam-card')?.scrollIntoView({ behavior: 'smooth' });
     }
 
     // Validate manual token entry
@@ -396,14 +458,18 @@
     // Show notification
     function showNotification(message, type) {
         const notification = document.createElement('div');
-        notification.className = `fixed top-6 right-6 px-6 py-3 rounded-lg shadow-lg text-white font-semibold z-50 ${
-            type === 'success' ? 'bg-green-500' : 'bg-red-500'
-        }`;
+        let bgColor = 'bg-red-500';
+        if (type === 'success') bgColor = 'bg-green-500';
+        else if (type === 'info') bgColor = 'bg-blue-500';
+        
+        notification.className = `fixed top-6 right-6 px-6 py-3 rounded-lg shadow-lg text-white font-semibold z-50 ${bgColor} animate-fade-in`;
         notification.textContent = message;
         document.body.appendChild(notification);
         
         setTimeout(() => {
-            notification.remove();
+            notification.style.opacity = '0';
+            notification.style.transition = 'opacity 0.3s';
+            setTimeout(() => notification.remove(), 300);
         }, 3000);
     }
 
