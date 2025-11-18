@@ -120,10 +120,12 @@ def simple_add_question(request):
     return render(request, 'exam/simple_add_question.html')
 
 
+# exam/views.py - FIXED VERSION
+
 @login_required(login_url='exam:login')
 def student_dashboard(request):
     """
-    Dashboard untuk student dengan statistik lengkap
+    Dashboard untuk student dengan statistik lengkap - FIXED
     """
     print(f"User: {request.user.username}")
     print(f"Authenticated: {request.user.is_authenticated}")
@@ -146,29 +148,97 @@ def student_dashboard(request):
 
     try:
         # ===== Statistik Ujian =====
-        # ✅ GUNAKAN 'sessions' BUKAN 'session'
         total_exams_taken = ExamSession.objects.filter(user=user, is_completed=True).count()
-        passed_exams = ExamSession.objects.filter(user=user, is_completed=True, score__gte=F('exam__passing_score')).count()
-        avg_result = ExamSession.objects.filter(user=user, is_completed=True, score__isnull=False).aggregate(avg_score=Avg('score'))
+        passed_exams = ExamSession.objects.filter(
+            user=user, 
+            is_completed=True, 
+            score__gte=F('exam__passing_score')
+        ).count()
+        
+        avg_result = ExamSession.objects.filter(
+            user=user, 
+            is_completed=True, 
+            score__isnull=False
+        ).aggregate(avg_score=Avg('score'))
+        
         average_score = avg_result['avg_score'] or 0
         success_rate = round((passed_exams / total_exams_taken) * 100, 2) if total_exams_taken > 0 else 0
 
         # ===== Aktivitas Terbaru =====
-        recent_sessions = ExamSession.objects.filter(user=user).select_related('exam', 'exam__subject').order_by('-start_time')[:5]
+        recent_sessions = ExamSession.objects.filter(
+            user=user
+        ).select_related('exam', 'exam__subject').order_by('-start_time')[:5]
 
-        # ===== Ujian Tersedia =====
-        # ✅ PERBAIKI QUERY INI - GUNAKAN 'sessions' BUKAN 'session'
-        available_exams = Exam.objects.filter(
-            status='published', is_active=True,
-            start_time__lte=now, end_time__gte=now
+        # ===== Ujian Yang Sedang Berlangsung (Ongoing) =====
+        ongoing_sessions = ExamSession.objects.filter(
+            user=user,
+            is_completed=False,
+            end_time__isnull=True
+        ).select_related('exam')
+
+        # ===== Upcoming Exams =====
+        upcoming_exams = Exam.objects.filter(
+            status='published',
+            is_active=True,
+            start_time__gt=now
         ).filter(
             Q(allowed_departments__isnull=True) | Q(allowed_departments=user.department)
         ).filter(
             Q(allowed_users__isnull=True) | Q(allowed_users=user)
-        ).exclude(
-            # ✅ INI YANG HARUS DIPERBAIKI:
-            sessions__user=user, sessions__is_completed=True  # GUNAKAN 'sessions' bukan 'session'
-        ).distinct().select_related('subject')[:6]
+        ).distinct().select_related('subject').order_by('start_time')[:5]
+
+        # ===== AVAILABLE EXAMS - FIXED LOGIC =====
+        # Step 1: Get all published exams yang sedang berlangsung (start_time <= now <= end_time)
+        available_base = Exam.objects.filter(
+            status='published',
+            is_active=True,
+            start_time__lte=now,
+            end_time__gte=now
+        ).filter(
+            Q(allowed_departments__isnull=True) | Q(allowed_departments=user.department)
+        ).filter(
+            Q(allowed_users__isnull=True) | Q(allowed_users=user)
+        )
+
+        # Step 2: Exclude exams where student has completed AND reached max attempts
+        excluded_exam_ids = []
+        for exam in available_base:
+            # Hitung jumlah completed sessions untuk exam ini
+            completed_count = ExamSession.objects.filter(
+                user=user,
+                exam=exam,
+                is_completed=True
+            ).count()
+            
+            # Jika sudah mencapai max attempts, exclude
+            if completed_count >= exam.max_attempts:
+                excluded_exam_ids.append(exam.id)
+        
+        # Final query: exclude yang sudah max attempts
+        available_exams = available_base.exclude(
+            id__in=excluded_exam_ids
+        ).select_related('subject').distinct()[:6]
+
+        # Debug info
+        print(f"📊 Available exams count: {available_exams.count()}")
+        for exam in available_exams:
+            print(f"  - {exam.title} | Start: {exam.start_time} | End: {exam.end_time}")
+
+        # ===== Monthly & Today Stats =====
+        today = now.date()
+        first_day_of_month = today.replace(day=1)
+        
+        monthly_exams = ExamSession.objects.filter(
+            user=user,
+            start_time__gte=first_day_of_month,
+            is_completed=True
+        ).count()
+        
+        today_exams = ExamSession.objects.filter(
+            user=user,
+            start_time__date=today,
+            is_completed=True
+        ).count()
 
         # ===== Context untuk template =====
         context = {
@@ -178,17 +248,258 @@ def student_dashboard(request):
             'success_rate': success_rate,
             'recent_sessions': recent_sessions,
             'available_exams': available_exams,
+            'ongoing_sessions': ongoing_sessions,
+            'upcoming_exams': upcoming_exams,
             'current_date': now,
             'user_department': user.department.name if user.department else "No Department",
+            'monthly_exams': monthly_exams,
+            'today_exams': today_exams,
         }
 
         return render(request, 'exam/student_dashboard.html', context)
 
     except Exception as e:
         print(f"Error in student_dashboard: {str(e)}")
+        import traceback
+        traceback.print_exc()
         messages.error(request, f"Error loading dashboard: {str(e)}")
         return render(request, 'exam/student_dashboard.html', {})
 
+
+@login_required
+@student_required
+def my_exams(request):
+    """
+    Halaman exams untuk student dengan sistem token - FIXED
+    """
+    if request.user.user_type != 'student':
+        messages.error(request, "Akses ditolak. Hanya untuk area student.")
+        return redirect('exam:login')
+    
+    now = timezone.now()
+    user = request.user
+    
+    # ===== AVAILABLE EXAMS - SAME FIXED LOGIC =====
+    available_base = Exam.objects.filter(
+        status='published',
+        is_active=True,
+        start_time__lte=now,
+        end_time__gte=now
+    ).filter(
+        Q(allowed_departments__isnull=True) | Q(allowed_departments=user.department)
+    ).filter(
+        Q(allowed_users__isnull=True) | Q(allowed_users=user)
+    )
+
+    # Exclude yang sudah max attempts
+    excluded_exam_ids = []
+    for exam in available_base:
+        completed_count = ExamSession.objects.filter(
+            user=user,
+            exam=exam,
+            is_completed=True
+        ).count()
+        
+        if completed_count >= exam.max_attempts:
+            excluded_exam_ids.append(exam.id)
+    
+    available_exams = available_base.exclude(
+        id__in=excluded_exam_ids
+    ).select_related('subject', 'created_by').distinct()
+    
+    # ===== Ongoing Sessions =====
+    ongoing_sessions = ExamSession.objects.filter(
+        user=user,
+        end_time__isnull=True,
+        is_completed=False
+    ).select_related('exam')
+    
+    # ===== Completed Sessions =====
+    completed_sessions = ExamSession.objects.filter(
+        user=user,
+        is_completed=True
+    ).select_related('exam').order_by('-end_time')
+    
+    # ===== Upcoming Exams =====
+    upcoming_exams = Exam.objects.filter(
+        status='published',
+        is_active=True,
+        start_time__gt=now
+    ).filter(
+        Q(allowed_departments__isnull=True) | Q(allowed_departments=user.department)
+    ).filter(
+        Q(allowed_users__isnull=True) | Q(allowed_users=user)
+    ).distinct().select_related('subject').order_by('start_time')[:5]
+    
+    # ===== Statistics =====
+    total_exams = available_exams.count() + ongoing_sessions.count() + completed_sessions.count()
+    avg_score = completed_sessions.aggregate(avg_score=Avg('score'))['avg_score'] or 0
+    passed_exams = completed_sessions.filter(score__gte=F('exam__passing_score')).count()
+    success_rate = round((passed_exams / completed_sessions.count() * 100), 2) if completed_sessions.count() > 0 else 0
+    
+    # ===== Active Tokens =====
+    all_published_exams = Exam.objects.filter(
+        status='published',
+        is_active=True
+    )
+    
+    active_tokens = ExamToken.objects.filter(
+        status='active',
+        expires_at__gte=now
+    ).filter(
+        Q(is_global=True) | Q(exam__in=all_published_exams)
+    ).select_related('exam', 'exam__subject').order_by('-is_global', 'expires_at')
+    
+    context = {
+        'available_exams': available_exams,
+        'ongoing_sessions': ongoing_sessions,
+        'completed_sessions': completed_sessions,
+        'upcoming_exams': upcoming_exams,
+        'total_exams': total_exams,
+        'average_score': round(avg_score, 2),
+        'success_rate': success_rate,
+        'current_date': now,
+        'active_tokens': active_tokens,
+    }
+    
+    return render(request, 'exam/my_exams.html', context)
+
+
+@login_required
+def student_exam_details(request, exam_id):
+    """
+    Detail page untuk exam dengan informasi lengkap - FIXED
+    """
+    exam = get_object_or_404(Exam, id=exam_id)
+    now = timezone.now()
+    user = request.user
+    
+    # Basic exam information
+    question_count = exam.questions.count()
+    
+    # Question type breakdown
+    question_types = exam.questions.values('question_type').annotate(count=Count('id'))
+    question_types_dict = {item['question_type']: item['count'] for item in question_types}
+    
+    # Difficulty distribution
+    difficulty_distribution = exam.questions.values('difficulty').annotate(count=Count('id'))
+    difficulty_dict = {item['difficulty']: item['count'] for item in difficulty_distribution}
+    
+    # Time progress calculation
+    total_duration = (exam.end_time - exam.start_time).total_seconds()
+    elapsed_time = (now - exam.start_time).total_seconds()
+    time_progress = min(100, max(0, (elapsed_time / total_duration) * 100)) if total_duration > 0 else 0
+    
+    # ===== User-specific data - FIXED =====
+    user_sessions = ExamSession.objects.filter(
+        user=user, 
+        exam=exam
+    ).order_by('-start_time')
+    
+    completed_sessions = user_sessions.filter(is_completed=True)
+    
+    # ✅ FIX: Hitung attempts_remaining dengan benar
+    attempts_remaining = max(0, exam.max_attempts - completed_sessions.count())
+    
+    # Calculate user statistics
+    if completed_sessions.exists():
+        best_score = completed_sessions.aggregate(max_score=Max('score'))['max_score'] or 0
+        average_score = completed_sessions.aggregate(avg_score=Avg('score'))['avg_score'] or 0
+    else:
+        best_score = 0
+        average_score = 0
+    
+    # ===== Check exam availability - FIXED =====
+    exam_available = (
+        exam.status == 'published' and 
+        exam.is_active and 
+        exam.start_time <= now <= exam.end_time
+    )
+    
+    time_available = (exam.start_time <= now <= exam.end_time)
+    
+    # ✅ FIX: Student bisa start exam jika masih ada attempts remaining
+    can_start_exam = (
+        exam_available and 
+        attempts_remaining > 0 and 
+        time_available
+    )
+    
+    # Check permissions
+    has_permission = (
+        not exam.allowed_departments.exists() or 
+        exam.allowed_departments.filter(id=user.department.id).exists()
+    ) and (
+        not exam.allowed_users.exists() or 
+        exam.allowed_users.filter(id=user.id).exists()
+    )
+    
+    # Get active token if exists
+    active_token = None
+    if hasattr(exam, 'tokens'):
+        active_token = exam.tokens.filter(
+            status='active',
+            expires_at__gt=now
+        ).first()
+    
+    # Overall exam statistics (for all users)
+    all_sessions = ExamSession.objects.filter(exam=exam)
+    total_attempts = all_sessions.count()
+    completed_attempts = all_sessions.filter(is_completed=True).count()
+    
+    if completed_attempts > 0:
+        overall_average_score = all_sessions.filter(is_completed=True).aggregate(
+            avg_score=Avg('score')
+        )['avg_score'] or 0
+        
+        passed_attempts = all_sessions.filter(
+            is_completed=True, 
+            score__gte=exam.passing_score
+        ).count()
+        
+        pass_rate = round((passed_attempts / completed_attempts) * 100, 2)
+        completion_rate = round((completed_attempts / total_attempts) * 100, 2)
+    else:
+        overall_average_score = 0
+        pass_rate = 0
+        completion_rate = 0
+    
+    # Debug info
+    print(f"🔍 Exam: {exam.title}")
+    print(f"  - Start: {exam.start_time} | End: {exam.end_time}")
+    print(f"  - Now: {now}")
+    print(f"  - Time available: {time_available}")
+    print(f"  - Exam available: {exam_available}")
+    print(f"  - Completed sessions: {completed_sessions.count()}")
+    print(f"  - Max attempts: {exam.max_attempts}")
+    print(f"  - Attempts remaining: {attempts_remaining}")
+    print(f"  - Can start: {can_start_exam}")
+    
+    context = {
+        'exam': exam,
+        'question_count': question_count,
+        'question_types': question_types_dict,
+        'difficulty_distribution': difficulty_dict,
+        'time_progress': time_progress,
+        'user_sessions': user_sessions,
+        'attempts_remaining': attempts_remaining,
+        'best_score': round(best_score, 2),
+        'average_score': round(average_score, 2),
+        'exam_available': exam_available,
+        'time_available': time_available,
+        'can_start_exam': can_start_exam and has_permission,
+        'has_permission': has_permission,
+        'active_token': active_token,
+        'total_attempts': total_attempts,
+        'overall_average_score': round(overall_average_score, 2),
+        'pass_rate': pass_rate,
+        'completion_rate': completion_rate,
+        'now': now,
+        'title': f'{exam.title} - Details'
+    }
+    
+    return render(request, 'exam/exam_details.html', context)
+    
 @login_required
 @student_required
 def my_exams(request):
