@@ -122,16 +122,14 @@ def simple_add_question(request):
 
 # exam/views.py - FIXED VERSION
 
+# exam/views.py - HANYA BAGIAN YANG DIUBAH
+
 @login_required(login_url='exam:login')
 def student_dashboard(request):
     """
     Dashboard untuk student dengan statistik lengkap - FIXED
+    Filter exam yang sudah completed
     """
-    print(f"User: {request.user.username}")
-    print(f"Authenticated: {request.user.is_authenticated}")
-    print(f"User type: {request.user.user_type}")
-
-    # Kalau bukan student, arahkan ke dashboard sesuai tipe user
     if request.user.user_type != 'student':
         if request.user.user_type == 'teacher':
             messages.info(request, "Redirected to teacher dashboard.")
@@ -187,8 +185,8 @@ def student_dashboard(request):
             Q(allowed_users__isnull=True) | Q(allowed_users=user)
         ).distinct().select_related('subject').order_by('start_time')[:5]
 
-        # ===== AVAILABLE EXAMS - FIXED LOGIC =====
-        # Step 1: Get all published exams yang sedang berlangsung (start_time <= now <= end_time)
+        # ===== AVAILABLE EXAMS - FIXED: EXCLUDE COMPLETED EXAMS =====
+        # Step 1: Get all published exams yang sedang berlangsung
         available_base = Exam.objects.filter(
             status='published',
             is_active=True,
@@ -200,29 +198,21 @@ def student_dashboard(request):
             Q(allowed_users__isnull=True) | Q(allowed_users=user)
         )
 
-        # Step 2: Exclude exams where student has completed AND reached max attempts
-        excluded_exam_ids = []
-        for exam in available_base:
-            # Hitung jumlah completed sessions untuk exam ini
-            completed_count = ExamSession.objects.filter(
-                user=user,
-                exam=exam,
-                is_completed=True
-            ).count()
-            
-            # Jika sudah mencapai max attempts, exclude
-            if completed_count >= exam.max_attempts:
-                excluded_exam_ids.append(exam.id)
+        # Step 2: Exclude exams where student has ANY completed session
+        # TIDAK peduli passed atau failed, yang penting sudah completed
+        completed_exam_ids = ExamSession.objects.filter(
+            user=user,
+            is_completed=True
+        ).values_list('exam_id', flat=True)
         
-        # Final query: exclude yang sudah max attempts
+        # Step 3: Exclude yang sudah completed (apapun hasilnya)
         available_exams = available_base.exclude(
-            id__in=excluded_exam_ids
+            id__in=completed_exam_ids
         ).select_related('subject').distinct()[:6]
 
         # Debug info
-        print(f"📊 Available exams count: {available_exams.count()}")
-        for exam in available_exams:
-            print(f"  - {exam.title} | Start: {exam.start_time} | End: {exam.end_time}")
+        print(f"📊 Total completed exams by user: {len(completed_exam_ids)}")
+        print(f"📊 Available exams after filter: {available_exams.count()}")
 
         # ===== Monthly & Today Stats =====
         today = now.date()
@@ -271,6 +261,7 @@ def student_dashboard(request):
 def my_exams(request):
     """
     Halaman exams untuk student dengan sistem token - FIXED
+    Filter exam yang sudah completed
     """
     if request.user.user_type != 'student':
         messages.error(request, "Akses ditolak. Hanya untuk area student.")
@@ -279,7 +270,7 @@ def my_exams(request):
     now = timezone.now()
     user = request.user
     
-    # ===== AVAILABLE EXAMS - SAME FIXED LOGIC =====
+    # ===== AVAILABLE EXAMS - FIXED: EXCLUDE COMPLETED =====
     available_base = Exam.objects.filter(
         status='published',
         is_active=True,
@@ -291,20 +282,14 @@ def my_exams(request):
         Q(allowed_users__isnull=True) | Q(allowed_users=user)
     )
 
-    # Exclude yang sudah max attempts
-    excluded_exam_ids = []
-    for exam in available_base:
-        completed_count = ExamSession.objects.filter(
-            user=user,
-            exam=exam,
-            is_completed=True
-        ).count()
-        
-        if completed_count >= exam.max_attempts:
-            excluded_exam_ids.append(exam.id)
+    # Exclude yang sudah completed (apapun hasilnya)
+    completed_exam_ids = ExamSession.objects.filter(
+        user=user,
+        is_completed=True
+    ).values_list('exam_id', flat=True)
     
     available_exams = available_base.exclude(
-        id__in=excluded_exam_ids
+        id__in=completed_exam_ids
     ).select_related('subject', 'created_by').distinct()
     
     # ===== Ongoing Sessions =====
@@ -368,7 +353,7 @@ def my_exams(request):
 @login_required
 def student_exam_details(request, exam_id):
     """
-    Detail page untuk exam dengan informasi lengkap - FIXED
+    Detail page untuk exam - FIXED: Check completed status
     """
     exam = get_object_or_404(Exam, id=exam_id)
     now = timezone.now()
@@ -398,8 +383,9 @@ def student_exam_details(request, exam_id):
     
     completed_sessions = user_sessions.filter(is_completed=True)
     
-    # ✅ FIX: Hitung attempts_remaining dengan benar
-    attempts_remaining = max(0, exam.max_attempts - completed_sessions.count())
+    # ✅ FIX: Student TIDAK BISA mengulang jika sudah ada completed session
+    has_completed = completed_sessions.exists()
+    attempts_remaining = 0 if has_completed else exam.max_attempts
     
     # Calculate user statistics
     if completed_sessions.exists():
@@ -418,10 +404,10 @@ def student_exam_details(request, exam_id):
     
     time_available = (exam.start_time <= now <= exam.end_time)
     
-    # ✅ FIX: Student bisa start exam jika masih ada attempts remaining
+    # ✅ FIX: TIDAK bisa start jika sudah completed
     can_start_exam = (
         exam_available and 
-        attempts_remaining > 0 and 
+        not has_completed and  # CRITICAL: Tidak bisa start jika sudah completed
         time_available
     )
     
@@ -466,13 +452,7 @@ def student_exam_details(request, exam_id):
     
     # Debug info
     print(f"🔍 Exam: {exam.title}")
-    print(f"  - Start: {exam.start_time} | End: {exam.end_time}")
-    print(f"  - Now: {now}")
-    print(f"  - Time available: {time_available}")
-    print(f"  - Exam available: {exam_available}")
-    print(f"  - Completed sessions: {completed_sessions.count()}")
-    print(f"  - Max attempts: {exam.max_attempts}")
-    print(f"  - Attempts remaining: {attempts_remaining}")
+    print(f"  - Has completed: {has_completed}")
     print(f"  - Can start: {can_start_exam}")
     
     context = {
@@ -495,105 +475,13 @@ def student_exam_details(request, exam_id):
         'pass_rate': pass_rate,
         'completion_rate': completion_rate,
         'now': now,
+        'has_completed': has_completed,  # Tambahan untuk template
         'title': f'{exam.title} - Details'
     }
     
     return render(request, 'exam/exam_details.html', context)
-    
-@login_required
-@student_required
-def my_exams(request):
-    """Halaman exams untuk student dengan sistem token"""
-    if request.user.user_type != 'student':
-        messages.error(request, "Akses ditolak. Hanya untuk area student.")
-        return redirect('exam:login')
-    
-    now = timezone.now()
-    user = request.user
-    
-    # HAPUS BARIS INI jika tidak diperlukan, atau perbaiki nama field
-    # exams = Exam.objects.filter(sessions__is_completed=False)  # Ini yang menyebabkan error
-    
-    # Dapatkan ujian yang tersedia
-    available_exams = Exam.objects.filter(
-        status='published',
-        is_active=True,
-        start_time__lte=now,
-        end_time__gte=now
-    ).filter(
-        Q(allowed_departments__isnull=True) | 
-        Q(allowed_departments=user.department)
-    ).filter(
-        Q(allowed_users__isnull=True) | 
-        Q(allowed_users=user)
-    ).exclude(
-        sessions__user=user,  # Gunakan 'sessions' bukan 'examsession'
-        sessions__is_completed=True
-    ).distinct().select_related('subject', 'created_by')
-    
-    # Dapatkan sesi yang sedang berlangsung
-    ongoing_sessions = ExamSession.objects.filter(
-        user=user,
-        end_time__isnull=True,
-        is_completed=False
-    ).select_related('exam')
-    
-    # Dapatkan sesi yang sudah selesai
-    completed_sessions = ExamSession.objects.filter(
-        user=user,
-        is_completed=True
-    ).select_related('exam').order_by('-end_time')
-    
-    # Dapatkan ujian yang akan datang
-    upcoming_exams = Exam.objects.filter(
-        status='published',
-        is_active=True,
-        start_time__gt=now
-    ).filter(
-        Q(allowed_departments__isnull=True) | 
-        Q(allowed_departments=user.department)
-    ).filter(
-        Q(allowed_users__isnull=True) | 
-        Q(allowed_users=user)
-    ).distinct().select_related('subject').order_by('start_time')[:5]
-    
-    # Hitung statistik
-    total_exams = available_exams.count() + ongoing_sessions.count() + completed_sessions.count()
-    
-    # Hitung rata-rata skor
-    avg_score = completed_sessions.aggregate(avg_score=Avg('score'))['avg_score'] or 0
-    
-    # Hitung tingkat keberhasilan
-    passed_exams = completed_sessions.filter(score__gte=F('exam__passing_score')).count()
-    success_rate = round((passed_exams / completed_sessions.count() * 100), 2) if completed_sessions.count() > 0 else 0
-    
-    # Dapatkan available tokens (Global dan Normal yang active)
-    # Token normal ditampilkan untuk semua exam yang published dan active (tidak perlu dalam rentang waktu)
-    all_published_exams = Exam.objects.filter(
-        status='published',
-        is_active=True
-    )
-    
-    active_tokens = ExamToken.objects.filter(
-        status='active',
-        expires_at__gte=now
-    ).filter(
-        Q(is_global=True) | Q(exam__in=all_published_exams)
-    ).select_related('exam', 'exam__subject').order_by('-is_global', 'expires_at')
-    
-    context = {
-        'available_exams': available_exams,
-        'ongoing_sessions': ongoing_sessions,
-        'completed_sessions': completed_sessions,
-        'upcoming_exams': upcoming_exams,
-        'total_exams': total_exams,
-        'average_score': round(avg_score, 2),
-        'success_rate': success_rate,
-        'current_date': now,
-        'active_tokens': active_tokens,
-    }
-    
-    return render(request, 'exam/my_exams.html', context)
+
+
 
 @login_required
 @student_required
