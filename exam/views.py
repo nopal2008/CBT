@@ -24,6 +24,8 @@ from django.views.decorators.cache import cache_control
 from django.contrib.auth import get_user_model
 from django.core.paginator import Paginator
 from django.contrib.sessions.models import Session
+from django.http import HttpResponse
+import pandas as pd
 import json
 import csv
 import io
@@ -2244,3 +2246,42 @@ def access_exam_with_token(request, token):
     except Exam.DoesNotExist:
         messages.error(request, 'Invalid exam token')
         return redirect('exam:my_exams')
+    
+def download_question_bank_template(request):
+    # Create template DataFrame
+    template_data = {
+        'question_text': ['Contoh pertanyaan 1', 'Contoh pertanyaan 2'],
+        'option_a': ['Pilihan A1', 'Pilihan A2'],
+        'option_b': ['Pilihan B1', 'Pilihan B2'],
+        'option_c': ['Pilihan C1', 'Pilihan C2'],
+        'option_d': ['Pilihan D1', 'Pilihan D2'],
+        'correct_answer': ['A', 'B'],
+        'difficulty_level': ['Easy', 'Medium'],
+        'marks': [1, 2],
+        'category': ['Umum', 'Spesifik']
+    }
+    
+    df = pd.DataFrame(template_data)
+    
+    # Create Excel file in memory
+    output = io.BytesIO()
+    with pd.ExcelWriter(output, engine='openpyxl') as writer:
+        df.to_excel(writer, sheet_name='Template', index=False)
+    
+    output.seek(0)
+    
+    # Create HTTP response
+    response = HttpResponse(
+        output.getvalue(),
+        content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+    )
+    response['Content-Disposition'] = 'attachment; filename="question_bank_template.xlsx"'
+    
+    return response
+
+def bulk_upload_questions(request):
+    # Your existing bulk upload logic
+    context = {
+        # ... existing context
+    }
+    return render(request, 'exam/bulk_upload.html', context)

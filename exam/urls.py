@@ -43,6 +43,8 @@ urlpatterns = [
     path('teacher/questions/bulk-upload/', views.bulk_upload_questions, name='bulk_upload_questions'),
     path('teacher/question-banks/create/', views.create_question_bank, name='create_question_bank'),
     path('teacher/question-banks/<int:bank_id>/', views.question_bank_detail, name='question_bank_detail'),
+    path('bulk-upload/', views.bulk_upload_questions, name='bulk_upload_questions'),
+    path('download-template/', views.download_question_bank_template, name='download_question_bank_template'),
 
     # ✅ EXAM CRUD - NEW
     path('teacher/exams/', views.exam_list, name='exam_list'),  
