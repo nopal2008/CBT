@@ -4,7 +4,10 @@ Django==4.2.25
 django-extensions==3.2.3
 django-jazzmin==3.0.1
 pillow==10.4.0
+pkg_resources==0.0.0
 python-dotenv==1.0.1
+pytz==2025.2
+reportlab==3.6.13
 sqlparse==0.5.3
 typing_extensions==4.13.2
 XlsxWriter==3.2.0
