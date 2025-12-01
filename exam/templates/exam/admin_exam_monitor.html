@@ -1,0 +1,269 @@
+{% extends 'base.html' %}
+
+{% block title %}Admin Exams Monitoring{% endblock %}
+
+{% block extra_head %}
+{{ block.super }}
+<link rel="stylesheet" href="https://cdn.datatables.net/1.13.6/css/jquery.dataTables.min.css">
+{% endblock %}
+
+{% block content %}
+<div class="space-y-8">
+    <div class="bg-gradient-to-r from-blue-600 to-indigo-600 rounded-2xl text-white p-8 shadow-xl flex flex-col lg:flex-row lg:items-center lg:justify-between gap-6">
+        <div>
+            <p class="text-sm uppercase tracking-wide text-blue-100 font-semibold mb-2">Admin Control Center</p>
+            <h1 class="text-3xl font-bold mb-2">Exam Monitoring</h1>
+            <p class="text-blue-100 max-w-2xl">Telusuri seluruh ujian yang dibuat teacher, pantau performa peserta, dan lakukan audit aktivitas terbaru tanpa meninggalkan dashboard admin.</p>
+        </div>
+        <div class="flex items-center space-x-4">
+            <div class="bg-white bg-opacity-20 rounded-2xl px-5 py-4 text-center">
+                <p class="text-sm text-blue-100">Total Exams</p>
+                <p class="text-3xl font-extrabold">{{ summary.total }}</p>
+                <p class="text-xs text-blue-100">Across all teachers</p>
+            </div>
+            <div class="bg-white bg-opacity-20 rounded-2xl px-5 py-4 text-center">
+                <p class="text-sm text-blue-100">Pass Rate</p>
+                <p class="text-3xl font-extrabold">{{ summary.pass_rate }}%</p>
+                <p class="text-xs text-blue-100">Completed attempts</p>
+            </div>
+        </div>
+    </div>
+
+    <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-6">
+        <div class="bg-white rounded-2xl p-5 shadow-lg border border-gray-100">
+            <p class="text-sm text-gray-500">Upcoming Exams</p>
+            <p class="text-3xl font-bold text-blue-600">{{ summary.upcoming }}</p>
+            <p class="text-xs text-gray-400 mt-1">Scheduled to start later</p>
+        </div>
+        <div class="bg-white rounded-2xl p-5 shadow-lg border border-gray-100">
+            <p class="text-sm text-gray-500">Ongoing</p>
+            <p class="text-3xl font-bold text-green-600">{{ summary.ongoing }}</p>
+            <p class="text-xs text-gray-400 mt-1">Active right now</p>
+        </div>
+        <div class="bg-white rounded-2xl p-5 shadow-lg border border-gray-100">
+            <p class="text-sm text-gray-500">Completed</p>
+            <p class="text-3xl font-bold text-indigo-600">{{ summary.completed }}</p>
+            <p class="text-xs text-gray-400 mt-1">Already finished</p>
+        </div>
+        <div class="bg-white rounded-2xl p-5 shadow-lg border border-gray-100">
+            <p class="text-sm text-gray-500">Active Students</p>
+            <p class="text-3xl font-bold text-rose-600">{{ summary.active_students }}</p>
+            <p class="text-xs text-gray-400 mt-1">Currently in exam</p>
+        </div>
+    </div>
+
+    <div class="bg-white rounded-2xl shadow-lg border border-gray-100 p-6">
+        <form method="get" class="grid grid-cols-1 lg:grid-cols-6 gap-4">
+            <div class="lg:col-span-2">
+                <label class="text-sm font-semibold text-gray-600">Search</label>
+                <input type="text" name="search" value="{{ filters.search }}" placeholder="Exam, subject, teacher..." class="mt-1 w-full border-gray-200 rounded-xl focus:ring-blue-500 focus:border-blue-500">
+            </div>
+            <div>
+                <label class="text-sm font-semibold text-gray-600">Status</label>
+                <select name="status" class="mt-1 w-full border-gray-200 rounded-xl focus:ring-blue-500 focus:border-blue-500">
+                    <option value="">All</option>
+                    {% for key,label in status_choices %}
+                        <option value="{{ key }}" {% if filters.status == key %}selected{% endif %}>{{ label }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div>
+                <label class="text-sm font-semibold text-gray-600">Subject</label>
+                <select name="subject" class="mt-1 w-full border-gray-200 rounded-xl focus:ring-blue-500 focus:border-blue-500">
+                    <option value="">All subjects</option>
+                    {% for subject in subjects %}
+                        <option value="{{ subject.id }}" {% if filters.subject == subject.id|stringformat:'s' %}selected{% endif %}>{{ subject.name }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div>
+                <label class="text-sm font-semibold text-gray-600">Teacher</label>
+                <select name="teacher" class="mt-1 w-full border-gray-200 rounded-xl focus:ring-blue-500 focus:border-blue-500">
+                    <option value="">All teachers</option>
+                    {% for teacher in teachers %}
+                        <option value="{{ teacher.id }}" {% if filters.teacher == teacher.id|stringformat:'s' %}selected{% endif %}>
+                            {{ teacher.get_full_name|default:teacher.username }}
+                        </option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div>
+                <label class="text-sm font-semibold text-gray-600">Sort</label>
+                <select name="sort" class="mt-1 w-full border-gray-200 rounded-xl focus:ring-blue-500 focus:border-blue-500">
+                    <option value="-start_time" {% if filters.sort == '-start_time' %}selected{% endif %}>Newest schedule</option>
+                    <option value="start_time" {% if filters.sort == 'start_time' %}selected{% endif %}>Oldest schedule</option>
+                    <option value="-created_at" {% if filters.sort == '-created_at' %}selected{% endif %}>Recently created</option>
+                    <option value="title" {% if filters.sort == 'title' %}selected{% endif %}>Title A-Z</option>
+                </select>
+            </div>
+            <div class="flex items-end space-x-2">
+                <button type="submit" class="flex-1 bg-blue-600 text-white py-3 rounded-xl font-semibold hover:bg-blue-700 transition">Apply</button>
+                <a href="{% url 'exam:admin_exam_monitor' %}" class="px-4 py-3 rounded-xl border border-gray-200 text-gray-600 font-semibold hover:bg-gray-50">Reset</a>
+            </div>
+            <div class="lg:col-span-2 grid grid-cols-2 gap-4">
+                <div>
+                    <label class="text-sm font-semibold text-gray-600">Start From</label>
+                    <input type="text" name="start_date" value="{{ filters.start_date }}" class="date-input mt-1 w-full border-gray-200 rounded-xl focus:ring-blue-500 focus:border-blue-500" placeholder="YYYY-MM-DD">
+                </div>
+                <div>
+                    <label class="text-sm font-semibold text-gray-600">Until</label>
+                    <input type="text" name="end_date" value="{{ filters.end_date }}" class="date-input mt-1 w-full border-gray-200 rounded-xl focus:ring-blue-500 focus:border-blue-500" placeholder="YYYY-MM-DD">
+                </div>
+            </div>
+        </form>
+    </div>
+
+    <div class="bg-white rounded-2xl shadow-xl border border-gray-100">
+        <div class="flex flex-col lg:flex-row lg:items-center lg:justify-between border-b border-gray-100 px-6 py-4">
+            <div>
+                <h2 class="text-xl font-bold text-gray-800">Exams Overview</h2>
+                <p class="text-sm text-gray-500">Daftar ujian dengan performa terkini.</p>
+            </div>
+            <div class="flex items-center space-x-3 mt-4 lg:mt-0">
+                <a href="?{% if query_string %}{{ query_string }}&{% endif %}export=csv" class="inline-flex items-center px-4 py-2 text-sm font-semibold border border-gray-200 rounded-xl hover:bg-gray-50">
+                    <i class="fas fa-file-export mr-2 text-gray-500"></i> Export CSV
+                </a>
+            </div>
+        </div>
+
+        <div class="overflow-x-auto">
+            {% if exams %}
+            <table id="examsTable" class="min-w-full divide-y divide-gray-100">
+                <thead class="bg-gray-50">
+                    <tr class="text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
+                        <th class="px-6 py-3">Exam</th>
+                        <th class="px-6 py-3">Teacher</th>
+                        <th class="px-6 py-3">Schedule</th>
+                        <th class="px-6 py-3">Performance</th>
+                        <th class="px-6 py-3">Status</th>
+                        <th class="px-6 py-3"></th>
+                    </tr>
+                </thead>
+                <tbody class="divide-y divide-gray-100 text-sm">
+                    {% for exam in exams %}
+                        <tr class="hover:bg-gray-50">
+                            <td class="px-6 py-4">
+                                <p class="font-semibold text-gray-900">{{ exam.title }}</p>
+                                <p class="text-xs text-gray-500">
+                                    {% if exam.subject %}
+                                        {{ exam.subject.name }}
+                                    {% else %}
+                                        No Subject
+                                    {% endif %}
+                                    · {{ exam.get_exam_type_display }}
+                                </p>
+                            </td>
+                            <td class="px-6 py-4">
+                                <p class="text-gray-800 font-semibold">{{ exam.created_by.get_full_name|default:exam.created_by.username }}</p>
+                                <p class="text-xs text-gray-500">Created {{ exam.created_at|date:"M d, Y" }}</p>
+                            </td>
+                            <td class="px-6 py-4">
+                                <p class="font-medium text-gray-800">{{ exam.start_time|date:"M d, Y H:i" }}</p>
+                                <p class="text-xs text-gray-500">Until {{ exam.end_time|date:"M d, Y H:i" }}</p>
+                            </td>
+                            <td class="px-6 py-4">
+                                <div class="flex flex-col space-y-1">
+                                    <span class="text-sm text-gray-700">Participants: <strong>{{ exam.participant_count }}</strong></span>
+                                    <span class="text-sm text-gray-700">Completed: <strong>{{ exam.completed_count }}</strong></span>
+                                    <span class="text-sm text-gray-700">Avg Score: <strong>{{ exam.avg_score_display }}%</strong></span>
+                                    <span class="text-xs text-gray-500">Pass Rate: {{ exam.pass_rate_display }}%</span>
+                                </div>
+                            </td>
+                            <td class="px-6 py-4">
+                                <span class="inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold
+                                    {% if exam.status == 'published' %}bg-green-100 text-green-700
+                                    {% elif exam.status == 'draft' %}bg-yellow-100 text-yellow-700
+                                    {% elif exam.status == 'completed' %}bg-blue-100 text-blue-700
+                                    {% else %}bg-gray-100 text-gray-600{% endif %}">
+                                    {{ exam.get_status_display }}
+                                </span>
+                            </td>
+                            <td class="px-6 py-4 text-right">
+                                <a href="{% url 'exam:admin_exam_detail' exam.id %}" class="inline-flex items-center px-4 py-2 rounded-xl bg-blue-600 text-white text-sm font-semibold hover:bg-blue-700 transition">
+                                    View Detail <i class="fas fa-arrow-right ml-2"></i>
+                                </a>
+                            </td>
+                        </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+            {% else %}
+            <div class="px-6 py-10 text-center text-gray-500">
+                <i class="fas fa-folder-open text-4xl mb-3 text-gray-300"></i>
+                <p>Belum ada ujian yang sesuai filter.</p>
+            </div>
+            {% endif %}
+        </div>
+
+    </div>
+
+    <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <div class="lg:col-span-2 bg-white rounded-2xl shadow-lg border border-gray-100 p-6">
+            <div class="flex items-center justify-between mb-4">
+                <div>
+                    <h3 class="text-lg font-bold text-gray-800">Recent Student Activity</h3>
+                    <p class="text-sm text-gray-500">Aktivitas terakhir peserta ujian</p>
+                </div>
+            </div>
+            <div class="space-y-4">
+                {% for activity in recent_activity %}
+                    <div class="flex items-center justify-between border border-gray-100 rounded-xl p-4 hover:shadow-sm transition">
+                        <div>
+                            <p class="font-semibold text-gray-800">{{ activity.user.get_full_name|default:activity.user.username }}</p>
+                            <p class="text-sm text-gray-500">{{ activity.exam.title }} • Attempt {{ activity.attempt_number }}</p>
+                        </div>
+                        <div class="text-right">
+                            <p class="text-sm text-gray-600">{{ activity.start_time|date:"M d, H:i" }}</p>
+                            <p class="text-xs text-gray-400 uppercase">{{ activity.get_status_display }}</p>
+                        </div>
+                    </div>
+                {% empty %}
+                    <p class="text-gray-500">Belum ada aktivitas terbaru.</p>
+                {% endfor %}
+            </div>
+        </div>
+        <div class="bg-white rounded-2xl shadow-lg border border-gray-100 p-6">
+            <h3 class="text-lg font-bold text-gray-800 mb-4">Subject Performance</h3>
+            <div class="space-y-4">
+                {% for subject_stat in score_by_subject %}
+                    <div>
+                        <div class="flex justify-between text-sm text-gray-600 mb-1">
+                            <span>{{ subject_stat.exam__subject__name|default:"No Subject" }}</span>
+                            <span>{{ subject_stat.avg_score|default_if_none:0|floatformat:1 }}%</span>
+                        </div>
+                        <div class="w-full bg-gray-100 rounded-full h-3">
+                            <div class="bg-blue-500 h-3 rounded-full" style="width: {{ subject_stat.avg_score|default_if_none:0|floatformat:0 }}%;"></div>
+                        </div>
+                        <p class="text-xs text-gray-400 mt-1">{{ subject_stat.attempts }} attempts</p>
+                    </div>
+                {% empty %}
+                    <p class="text-gray-500 text-sm">Belum ada data hasil ujian.</p>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+{{ block.super }}
+<script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
+<script src="https://cdn.datatables.net/1.13.6/js/jquery.dataTables.min.js"></script>
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+    if (window.flatpickr) {
+        flatpickr('input[name="start_date"]', { dateFormat: 'Y-m-d', allowInput: true });
+        flatpickr('input[name="end_date"]', { dateFormat: 'Y-m-d', allowInput: true });
+    }
+    
+    if (window.jQuery && $.fn.DataTable && $('#examsTable').length) {
+        $('#examsTable').DataTable({
+            pageLength: 10,
+            lengthChange: false,
+            order: [],
+            dom: 'lrtip'
+        });
+    }
+});
+</script>
+{% endblock %}
