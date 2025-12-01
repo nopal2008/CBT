@@ -486,14 +486,29 @@ from django.dispatch import receiver
 @receiver(post_save, sender=ExamSession)
 def update_exam_session_stats(sender, instance, **kwargs):
     if instance.is_completed and instance.status == 'completed':
-        # Update question counts
-        instance.answered_questions = instance.user_answers.count()
-        instance.correct_answers = instance.user_answers.filter(is_correct=True).count()
-        instance.wrong_answers = instance.answered_questions - instance.correct_answers
-        instance.save()
-        
-        # Calculate final score
-        instance.calculate_score()
+        # Hindari rekursi post_save dengan update langsung ke DB
+        answered_count = instance.user_answers.count()
+        correct_count = instance.user_answers.filter(is_correct=True).count()
+        wrong_count = answered_count - correct_count
+
+        # Hitung skor dari jawaban yang tersedia
+        total_points = sum(q.points for q in instance.exam.questions.all())
+        earned_points = 0
+        for answer in instance.user_answers.select_related('question'):
+            # Kalau poin manual ada, pakai itu; fallback ke nilai default per soal
+            if answer.points_earned is not None:
+                earned_points += answer.points_earned
+            elif answer.is_correct:
+                earned_points += answer.question.points
+
+        score = (earned_points / total_points) * 100 if total_points > 0 else 0
+
+        ExamSession.objects.filter(pk=instance.pk).update(
+            answered_questions=answered_count,
+            correct_answers=correct_count,
+            wrong_answers=wrong_count,
+            score=score,
+        )
 
 class StudentAnswer(models.Model):
     session = models.ForeignKey('ExamSession', on_delete=models.CASCADE, related_name='answers')
