@@ -1,199 +1,176 @@
+{% extends 'base.html' %}
 {% load question_tags %}
 
-<!DOCTYPE html>
-<html lang="id">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Question Management - CBT System</title>
-    <script src="https://cdn.tailwindcss.com"></script>
-    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
-</head>
-<body class="bg-gray-50">
-    <!-- Navigation -->
-    <nav class="bg-green-600 text-white shadow-lg">
-        <div class="container mx-auto px-4">
-            <div class="flex justify-between items-center py-4">
-                <div class="flex items-center space-x-3">
-                    <i class="fas fa-chalkboard-teacher text-2xl"></i>
-                    <h1 class="text-xl font-bold">Question Management</h1>
-                </div>
-                <div class="flex items-center space-x-4">
-                    <a href="{% url 'exam:teacher_dashboard' %}" class="bg-blue-500 hover:bg-blue-600 px-4 py-2 rounded-lg transition duration-200">
-                        <i class="fas fa-arrow-left mr-2"></i>Back to Dashboard
-                    </a>
-                    <span class="bg-green-500 px-3 py-1 rounded-full text-sm">
-                        {{ user.get_full_name|default:user.username }}
-                    </span>
-                    <a href="{% url 'exam:logout' %}" class="bg-red-500 hover:bg-red-600 px-4 py-2 rounded-lg transition duration-200">
-                        <i class="fas fa-sign-out-alt mr-2"></i>Logout
-                    </a>
-                </div>
-            </div>
+{% block title %}Question Management - CBT System{% endblock %}
+
+{% block extra_head %}
+<style>
+    .line-clamp-2 {
+        display: -webkit-box;
+        -webkit-line-clamp: 2;
+        -webkit-box-orient: vertical;
+        overflow: hidden;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="max-w-7xl mx-auto space-y-8">
+    <div class="flex items-center justify-between">
+        <div>
+            <p class="text-sm text-gray-500">Organize questions and banks</p>
+            <h1 class="text-3xl font-bold text-gray-900 flex items-center gap-3">
+                <span>Question Management</span>
+                <span class="text-2xl">📚</span>
+            </h1>
         </div>
-    </nav>
+        <a href="{% url 'exam:teacher_dashboard' %}" class="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition duration-200">
+            <i class="fas fa-arrow-left mr-2"></i>Dashboard
+        </a>
+    </div>
 
-    <!-- Main Content -->
-    <div class="container mx-auto px-4 py-8">
-        <!-- Quick Actions -->
-        <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
-            <a href="{% url 'exam:add_question' %}" class="bg-white rounded-2xl p-6 shadow-lg text-center hover:shadow-xl transition duration-200 border-2 border-green-200">
-                <div class="w-16 h-16 bg-green-500 rounded-full flex items-center justify-center mx-auto mb-4">
-                    <i class="fas fa-plus text-white text-2xl"></i>
-                </div>
-                <h3 class="text-xl font-bold text-gray-800 mb-2">Add Single Question</h3>
-                <p class="text-gray-600">Create one question at a time with multiple choices</p>
-            </a>
+    <!-- Quick Actions -->
+    <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+        <a href="{% url 'exam:add_question' %}" class="bg-white rounded-2xl p-6 shadow-lg text-center hover:shadow-xl transition duration-200 border-2 border-green-200">
+            <div class="w-16 h-16 bg-green-500 rounded-full flex items-center justify-center mx-auto mb-4">
+                <i class="fas fa-plus text-white text-2xl"></i>
+            </div>
+            <h3 class="text-xl font-bold text-gray-800 mb-2">Add Single Question</h3>
+            <p class="text-gray-600">Create one question at a time with multiple choices</p>
+        </a>
 
-            <a href="{% url 'exam:bulk_upload_questions' %}" class="bg-white rounded-2xl p-6 shadow-lg text-center hover:shadow-xl transition duration-200 border-2 border-blue-200">
-                <div class="w-16 h-16 bg-blue-500 rounded-full flex items-center justify-center mx-auto mb-4">
-                    <i class="fas fa-file-csv text-white text-2xl"></i>
-                </div>
-                <h3 class="text-xl font-bold text-gray-800 mb-2">Bulk Upload</h3>
-                <p class="text-gray-600">Upload multiple questions via CSV file</p>
-            </a>
+        <a href="{% url 'exam:bulk_upload_questions' %}" class="bg-white rounded-2xl p-6 shadow-lg text-center hover:shadow-xl transition duration-200 border-2 border-blue-200">
+            <div class="w-16 h-16 bg-blue-500 rounded-full flex items-center justify-center mx-auto mb-4">
+                <i class="fas fa-file-csv text-white text-2xl"></i>
+            </div>
+            <h3 class="text-xl font-bold text-gray-800 mb-2">Bulk Upload</h3>
+            <p class="text-gray-600">Upload multiple questions via CSV file</p>
+        </a>
 
-            <a href="{% url 'exam:create_question_bank' %}" class="bg-white rounded-2xl p-6 shadow-lg text-center hover:shadow-xl transition duration-200 border-2 border-purple-200">
-                <div class="w-16 h-16 bg-purple-500 rounded-full flex items-center justify-center mx-auto mb-4">
-                    <i class="fas fa-database text-white text-2xl"></i>
-                </div>
-                <h3 class="text-xl font-bold text-gray-800 mb-2">Create Question Bank</h3>
-                <p class="text-gray-600">Organize questions into categories</p>
-            </a>
+        <a href="{% url 'exam:create_question_bank' %}" class="bg-white rounded-2xl p-6 shadow-lg text-center hover:shadow-xl transition duration-200 border-2 border-purple-200">
+            <div class="w-16 h-16 bg-purple-500 rounded-full flex items-center justify-center mx-auto mb-4">
+                <i class="fas fa-database text-white text-2xl"></i>
+            </div>
+            <h3 class="text-xl font-bold text-gray-800 mb-2">Create Question Bank</h3>
+            <p class="text-gray-600">Organize questions into categories</p>
+        </a>
+    </div>
+
+    <!-- Statistics -->
+    <div class="grid grid-cols-1 md:grid-cols-4 gap-6">
+        <div class="bg-white rounded-2xl p-6 shadow-lg text-center">
+            <div class="text-3xl font-bold text-green-600 mb-2">{{ my_questions.count }}</div>
+            <p class="text-gray-600">Total Questions</p>
         </div>
-
-        <!-- Statistics -->
-        <div class="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
-            <div class="bg-white rounded-2xl p-6 shadow-lg text-center">
-                <div class="text-3xl font-bold text-green-600 mb-2">{{ my_questions.count }}</div>
-                <p class="text-gray-600">Total Questions</p>
-            </div>
-            <div class="bg-white rounded-2xl p-6 shadow-lg text-center">
-                <div class="text-3xl font-bold text-blue-600 mb-2">{{ my_question_banks.count }}</div>
-                <p class="text-gray-600">Question Banks</p>
-            </div>
-            <div class="bg-white rounded-2xl p-6 shadow-lg text-center">
-                <div class="text-3xl font-bold text-purple-600 mb-2">{{ my_exams.count }}</div>
-                <p class="text-gray-600">Your Exams</p>
-            </div>
-            <div class="bg-white rounded-2xl p-6 shadow-lg text-center">
-                <div class="text-3xl font-bold text-orange-600 mb-2">
-                    {{ my_questions|count_by_difficulty:"hard" }}
-                </div>
-                <p class="text-gray-600">Hard Questions</p>
-            </div>
+        <div class="bg-white rounded-2xl p-6 shadow-lg text-center">
+            <div class="text-3xl font-bold text-blue-600 mb-2">{{ my_question_banks.count }}</div>
+            <p class="text-gray-600">Question Banks</p>
         </div>
-
-        <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
-            <!-- Recent Questions -->
-            <div class="bg-white rounded-2xl shadow-lg p-6">
-                <div class="flex justify-between items-center mb-6">
-                    <h2 class="text-2xl font-bold text-gray-800">Recent Questions</h2>
-                    <a href="{% url 'exam:add_question' %}" class="bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 transition duration-200">
-                        <i class="fas fa-plus mr-2"></i>Add New
-                    </a>
-                </div>
-
-                {% if my_questions %}
-                <div class="space-y-4">
-                    {% for question in my_questions|slice:":5" %}
-                    <div class="border border-gray-200 rounded-lg p-4 hover:bg-gray-50 transition duration-200">
-                        <div class="flex justify-between items-start mb-2">
-                            <h3 class="font-semibold text-gray-800 line-clamp-2">{{ question.text }}</h3>
-                            <span class="bg-blue-100 text-blue-800 px-2 py-1 rounded text-xs font-semibold">
-                                {{ question.get_question_type_display }}
-                            </span>
-                        </div>
-                        <div class="flex justify-between items-center text-sm text-gray-600">
-                            <span>Points: {{ question.points }}</span>
-                            <span>Difficulty: {{ question.get_difficulty_display }}</span>
-                            <span>{{ question.created_at|date:"M d, Y" }}</span>
-                        </div>
-                        <div class="flex space-x-2 mt-3">
-                            <a href="{% url 'exam:edit_question' question.id %}" class="text-blue-600 hover:text-blue-800 text-sm">
-                                <i class="fas fa-edit mr-1"></i>Edit
-                            </a>
-                            <a href="{% url 'exam:delete_question' question.id %}" class="text-red-600 hover:text-red-800 text-sm">
-                                <i class="fas fa-trash mr-1"></i>Delete
-                            </a>
-                        </div>
-                    </div>
-                    {% endfor %}
-                </div>
-                {% else %}
-                <div class="text-center py-8 text-gray-500">
-                    <i class="fas fa-question-circle text-4xl mb-4 text-gray-300"></i>
-                    <p>No questions created yet</p>
-                    <a href="{% url 'exam:add_question' %}" class="text-green-600 hover:text-green-800 mt-2 inline-block">
-                        Create your first question
-                    </a>
-                </div>
-                {% endif %}
+        <div class="bg-white rounded-2xl p-6 shadow-lg text-center">
+            <div class="text-3xl font-bold text-purple-600 mb-2">{{ my_exams.count }}</div>
+            <p class="text-gray-600">Your Exams</p>
+        </div>
+        <div class="bg-white rounded-2xl p-6 shadow-lg text-center">
+            <div class="text-3xl font-bold text-orange-600 mb-2">
+                {{ my_questions|count_by_difficulty:"hard" }}
             </div>
-
-            <!-- Question Banks -->
-            <div class="bg-white rounded-2xl shadow-lg p-6">
-                <div class="flex justify-between items-center mb-6">
-                    <h2 class="text-2xl font-bold text-gray-800">Your Question Banks</h2>
-                    <a href="{% url 'exam:create_question_bank' %}" class="bg-purple-600 text-white px-4 py-2 rounded-lg hover:bg-purple-700 transition duration-200">
-                        <i class="fas fa-plus mr-2"></i>New Bank
-                    </a>
-                </div>
-
-                {% if my_question_banks %}
-                <div class="space-y-4">
-                    {% for bank in my_question_banks %}
-                    <div class="border border-gray-200 rounded-lg p-4 hover:bg-gray-50 transition duration-200">
-                        <div class="flex justify-between items-start mb-2">
-                            <h3 class="font-semibold text-gray-800">{{ bank.name }}</h3>
-                            <span class="bg-green-100 text-green-800 px-2 py-1 rounded text-xs font-semibold">
-                                {{ bank.questions.count }} questions
-                            </span>
-                        </div>
-                        <p class="text-sm text-gray-600 mb-3 line-clamp-2">{{ bank.description|default:"No description" }}</p>
-                        <div class="flex justify-between items-center text-sm text-gray-600">
-                            <span>Subject: {{ bank.subject.name }}</span>
-                            {% if bank.is_shared %}
-                            <span class="text-green-600">Shared</span>
-                            {% else %}
-                            <span class="text-gray-500">Private</span>
-                            {% endif %}
-                        </div>
-                        <div class="mt-3">
-                            <a href="{% url 'exam:question_bank_detail' bank.id %}" class="text-blue-600 hover:text-blue-800 text-sm">
-                                <i class="fas fa-eye mr-1"></i>View Questions
-                            </a>
-                        </div>
-                    </div>
-                    {% endfor %}
-                </div>
-                {% else %}
-                <div class="text-center py-8 text-gray-500">
-                    <i class="fas fa-database text-4xl mb-4 text-gray-300"></i>
-                    <p>No question banks created yet</p>
-                    <a href="{% url 'exam:create_question_bank' %}" class="text-purple-600 hover:text-purple-800 mt-2 inline-block">
-                        Create your first question bank
-                    </a>
-                </div>
-                {% endif %}
-            </div>
+            <p class="text-gray-600">Hard Questions</p>
         </div>
     </div>
 
-    <!-- Footer -->
-    <footer class="bg-gray-800 text-white py-6 mt-12">
-        <div class="container mx-auto px-4 text-center">
-            <p>&copy; 2024 CBT System. Teacher Question Management Portal.</p>
-        </div>
-    </footer>
+    <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
+        <!-- Recent Questions -->
+        <div class="bg-white rounded-2xl shadow-lg p-6">
+            <div class="flex justify-between items-center mb-6">
+                <h2 class="text-2xl font-bold text-gray-800">Recent Questions</h2>
+                <a href="{% url 'exam:add_question' %}" class="bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 transition duration-200">
+                    <i class="fas fa-plus mr-2"></i>Add New
+                </a>
+            </div>
 
-    <style>
-        .line-clamp-2 {
-            display: -webkit-box;
-            -webkit-line-clamp: 2;
-            -webkit-box-orient: vertical;
-            overflow: hidden;
-        }
-    </style>
-</body>
-</html>
+            {% if my_questions %}
+            <div class="space-y-4">
+                {% for question in my_questions|slice:":5" %}
+                <div class="border border-gray-200 rounded-lg p-4 hover:bg-gray-50 transition duration-200">
+                    <div class="flex justify-between items-start mb-2">
+                        <h3 class="font-semibold text-gray-800 line-clamp-2">{{ question.text }}</h3>
+                        <span class="bg-blue-100 text-blue-800 px-2 py-1 rounded text-xs font-semibold">
+                            {{ question.get_question_type_display }}
+                        </span>
+                    </div>
+                    <div class="flex justify-between items-center text-sm text-gray-600">
+                        <span>Points: {{ question.points }}</span>
+                        <span>Difficulty: {{ question.get_difficulty_display }}</span>
+                        <span>{{ question.created_at|date:"M d, Y" }}</span>
+                    </div>
+                    <div class="flex space-x-2 mt-3">
+                        <a href="{% url 'exam:edit_question' question.id %}" class="text-blue-600 hover:text-blue-800 text-sm">
+                            <i class="fas fa-edit mr-1"></i>Edit
+                        </a>
+                        <a href="{% url 'exam:delete_question' question.id %}" class="text-red-600 hover:text-red-800 text-sm">
+                            <i class="fas fa-trash mr-1"></i>Delete
+                        </a>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+            {% else %}
+            <div class="text-center py-8 text-gray-500">
+                <i class="fas fa-question-circle text-4xl mb-4 text-gray-300"></i>
+                <p>No questions created yet</p>
+                <a href="{% url 'exam:add_question' %}" class="text-green-600 hover:text-green-800 mt-2 inline-block">
+                    Create your first question
+                </a>
+            </div>
+            {% endif %}
+        </div>
+
+        <!-- Question Banks -->
+        <div class="bg-white rounded-2xl shadow-lg p-6">
+            <div class="flex justify-between items-center mb-6">
+                <h2 class="text-2xl font-bold text-gray-800">Your Question Banks</h2>
+                <a href="{% url 'exam:create_question_bank' %}" class="bg-purple-600 text-white px-4 py-2 rounded-lg hover:bg-purple-700 transition duration-200">
+                    <i class="fas fa-plus mr-2"></i>New Bank
+                </a>
+            </div>
+
+            {% if my_question_banks %}
+            <div class="space-y-4">
+                {% for bank in my_question_banks %}
+                <div class="border border-gray-200 rounded-lg p-4 hover:bg-gray-50 transition duration-200">
+                    <div class="flex justify-between items-start mb-2">
+                        <h3 class="font-semibold text-gray-800">{{ bank.name }}</h3>
+                        <span class="bg-green-100 text-green-800 px-2 py-1 rounded text-xs font-semibold">
+                            {{ bank.questions.count }} questions
+                        </span>
+                    </div>
+                    <p class="text-sm text-gray-600 mb-3 line-clamp-2">{{ bank.description|default:"No description" }}</p>
+                    <div class="flex justify-between items-center text-sm text-gray-600">
+                        <span>Subject: {{ bank.subject.name }}</span>
+                        {% if bank.is_shared %}
+                        <span class="text-green-600">Shared</span>
+                        {% else %}
+                        <span class="text-gray-500">Private</span>
+                        {% endif %}
+                    </div>
+                    <div class="mt-3">
+                        <a href="{% url 'exam:question_bank_detail' bank.id %}" class="text-blue-600 hover:text-blue-800 text-sm">
+                            <i class="fas fa-eye mr-1"></i>View Questions
+                        </a>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+            {% else %}
+            <div class="text-center py-8 text-gray-500">
+                <i class="fas fa-database text-4xl mb-4 text-gray-300"></i>
+                <p>No question banks created yet</p>
+                <a href="{% url 'exam:create_question_bank' %}" class="text-purple-600 hover:text-purple-800 mt-2 inline-block">
+                    Create your first question bank
+                </a>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% endblock %}
