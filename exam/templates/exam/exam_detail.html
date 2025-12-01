@@ -1,5 +1,5 @@
 {% extends 'base.html' %}
-{% load static %}
+{% load static tz %}
 
 {% block title %}{{ exam.title }} - Exam Details{% endblock %}
 
@@ -136,7 +136,7 @@
                     <i class="fas fa-calendar text-blue-500 mr-3"></i>
                     Exam Schedule
                 </h2>
-                
+                {% timezone "Asia/Jakarta" %}
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
                     <!-- Start Time -->
                     <div class="bg-green-50 rounded-xl p-5 border-l-4 border-green-500">
@@ -145,9 +145,9 @@
                                 <i class="fas fa-play text-white"></i>
                             </div>
                             <div>
-                                <p class="text-sm text-gray-600 font-semibold">Start Time</p>
+                                <p class="text-sm text-gray-600 font-semibold">Start Time (WIB)</p>
                                 <p class="text-xl font-bold text-gray-800">{{ exam.start_time|date:"M d, Y" }}</p>
-                                <p class="text-sm text-gray-600">{{ exam.start_time|date:"H:i" }}</p>
+                                <p class="text-sm text-gray-600">{{ exam.start_time|date:"H:i" }} WIB</p>
                             </div>
                         </div>
                     </div>
@@ -159,13 +159,14 @@
                                 <i class="fas fa-stop text-white"></i>
                             </div>
                             <div>
-                                <p class="text-sm text-gray-600 font-semibold">End Time</p>
+                                <p class="text-sm text-gray-600 font-semibold">End Time (WIB)</p>
                                 <p class="text-xl font-bold text-gray-800">{{ exam.end_time|date:"M d, Y" }}</p>
-                                <p class="text-sm text-gray-600">{{ exam.end_time|date:"H:i" }}</p>
+                                <p class="text-sm text-gray-600">{{ exam.end_time|date:"H:i" }} WIB</p>
                             </div>
                         </div>
                     </div>
                 </div>
+                {% endtimezone %}
             </div>
 
             <!-- Exam Instructions - Match Image 3 -->
@@ -232,6 +233,37 @@
                         </ul>
                     </div>
                 </div>
+            </div>
+
+            <!-- Questions List -->
+            <div class="bg-white rounded-2xl shadow-lg p-6">
+                <div class="flex items-center justify-between mb-4">
+                    <h2 class="text-xl font-bold text-gray-800 flex items-center">
+                        <i class="fas fa-list-ol text-indigo-500 mr-3"></i>
+                        Questions
+                    </h2>
+                    <span class="text-sm text-gray-500">{{ questions|length }} items</span>
+                </div>
+
+                {% if questions %}
+                <div class="space-y-3">
+                    {% for question in questions %}
+                    <div class="border border-gray-200 rounded-lg p-4 hover:border-indigo-400 transition">
+                        <div class="flex justify-between items-start">
+                            <div class="flex-1 pr-4">
+                                <p class="font-semibold text-gray-800">{{ forloop.counter }}. {{ question.text }}</p>
+                                <p class="text-xs text-gray-500 mt-1">
+                                    Type: {{ question.get_question_type_display }} • Difficulty: {{ question.get_difficulty_display }} • Points: {{ question.points }}
+                                </p>
+                            </div>
+                            <span class="bg-gray-100 text-gray-700 text-xs px-2 py-1 rounded">{{ question.choices.count }} choices</span>
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+                {% else %}
+                <p class="text-gray-500 text-sm">No questions added yet.</p>
+                {% endif %}
             </div>
 
         </div>
