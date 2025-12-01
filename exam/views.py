@@ -1760,6 +1760,8 @@ def add_question_fallback(request):
     # Panggil fungsi add_question asli
     return add_question(request)
 
+@login_required
+@teacher_required
 def download_question_bank_template(request):
     """
     View untuk mendownload template CSV Question Bank
@@ -1824,32 +1826,6 @@ def download_question_bank_template(request):
 # =========================
 @login_required
 @teacher_required
-def download_question_bank_template(request):
-    """Download CSV template for questions"""
-    response = HttpResponse(content_type='text/csv')
-    response['Content-Disposition'] = 'attachment; filename="question_template.csv"'
-    
-    writer = csv.writer(response)
-    # Write header
-    writer.writerow([
-        'Question Text', 'Question Type', 'Points', 'Difficulty', 
-        'Correct Answer', 'Option A', 'Option B', 'Option C', 'Option D', 'Option E'
-    ])
-    # Write example rows
-    writer.writerow([
-        'What is 2+2?', 'multiple_choice', '5', 'easy', 'A', 
-        '4', '5', '6', '7', ''
-    ])
-    writer.writerow([
-        'Python is interpreted language', 'true_false', '3', 'easy', 'A',
-        'True', 'False', '', '', ''
-    ])
-    
-    return response
-
-
-@login_required
-@teacher_required
 def download_question_template(request):
     """Download CSV template for bulk question upload (supports options A-E)."""
     response = HttpResponse(content_type='text/csv')
@@ -1881,9 +1857,6 @@ def download_question_template(request):
 
     return response
 
-@login_required
-@teacher_required
-
 def auto_wrap_math(text):
     """Otomatis bungkus teks yang mengandung rumus dengan $...$ biar MathJax render."""
     if not text:
@@ -1901,6 +1874,8 @@ def auto_wrap_math(text):
     return text
 
 
+@login_required
+@teacher_required
 def bulk_upload_questions(request):
     exams = Exam.objects.filter(created_by=request.user, is_active=True)
     question_banks = QuestionBank.objects.filter(created_by=request.user)
@@ -2683,43 +2658,3 @@ def access_exam_with_token(request, token):
     except Exam.DoesNotExist:
         messages.error(request, 'Invalid exam token')
         return redirect('exam:my_exams')
-
-def download_question_bank_template(request):
-    # Create template DataFrame
-    template_data = {
-        'question_text': ['Contoh pertanyaan 1', 'Contoh pertanyaan 2'],
-        'option_a': ['Pilihan A1', 'Pilihan A2'],
-        'option_b': ['Pilihan B1', 'Pilihan B2'],
-        'option_c': ['Pilihan C1', 'Pilihan C2'],
-        'option_d': ['Pilihan D1', 'Pilihan D2'],
-        'correct_answer': ['A', 'B'],
-        'difficulty_level': ['Easy', 'Medium'],
-        'marks': [1, 2],
-        'category': ['Umum', 'Spesifik']
-    }
-    
-    df = pd.DataFrame(template_data)
-    
-    # Create Excel file in memory
-    output = io.BytesIO()
-    with pd.ExcelWriter(output, engine='openpyxl') as writer:
-        df.to_excel(writer, sheet_name='Template', index=False)
-    
-    output.seek(0)
-    
-    # Create HTTP response
-    response = HttpResponse(
-        output.getvalue(),
-        content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
-    )
-    response['Content-Disposition'] = 'attachment; filename="question_bank_template.xlsx"'
-    
-    return response
-
-def bulk_upload_questions(request):
-    # Your existing bulk upload logic
-    context = {
-        # ... existing context
-    }
-    return render(request, 'exam/bulk_upload.html', context)
-
