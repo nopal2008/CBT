@@ -303,8 +303,21 @@
                         Cancel
                     </button>
                     <button @click="submitExam" 
-                            class="flex-1 bg-green-600 text-white py-3 rounded-lg hover:bg-green-700 transition duration-200 font-semibold">
-                        Yes, Submit Exam
+                            class="flex-1 bg-green-600 text-white py-3 rounded-lg hover:bg-green-700 transition duration-200 font-semibold flex items-center justify-center"
+                            :disabled="isSubmitting"
+                            :class="{'opacity-70 cursor-not-allowed': isSubmitting}">
+                        <template x-if="isSubmitting">
+                            <span class="flex items-center">
+                                <svg class="animate-spin h-5 w-5 mr-2 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                                    <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                                    <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z"></path>
+                                </svg>
+                                Submitting...
+                            </span>
+                        </template>
+                        <template x-if="!isSubmitting">
+                            <span>Yes, Submit Exam</span>
+                        </template>
                     </button>
                 </div>
             </div>
@@ -323,8 +336,21 @@
                 <h3 class="text-xl font-bold text-gray-800 mb-2">Time's Up!</h3>
                 <p class="text-gray-600 mb-6">Your exam time has ended. Your answers will be submitted automatically.</p>
                 <button @click="submitExam" 
-                        class="w-full bg-red-600 text-white py-3 rounded-lg hover:bg-red-700 transition duration-200 font-semibold">
-                    View Results
+                        class="w-full bg-red-600 text-white py-3 rounded-lg hover:bg-red-700 transition duration-200 font-semibold flex items-center justify-center"
+                        :disabled="isSubmitting"
+                        :class="{'opacity-70 cursor-not-allowed': isSubmitting}">
+                    <template x-if="isSubmitting">
+                        <span class="flex items-center">
+                            <svg class="animate-spin h-5 w-5 mr-2 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                                <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z"></path>
+                            </svg>
+                            Submitting...
+                        </span>
+                    </template>
+                    <template x-if="!isSubmitting">
+                        <span>View Results</span>
+                    </template>
                 </button>
             </div>
         </div>
@@ -348,6 +374,7 @@ function examApp() {
         questions: {{ questions_data|safe }},
         currentQuestionIndex: 0,
         remainingTime: {{ exam.duration_minutes }} * 60,
+        progressKey: 'exam_progress_{{ exam.id }}_{{ ongoing_session.id|default:"0" }}',
         showSubmitModal: false,
         showTimeUpModal: false,
         examSessionId: null,
@@ -355,6 +382,7 @@ function examApp() {
         showError: false,
         errorTitle: '',
         errorMessage: '',
+        isSubmitting: false,
         
         get currentQuestion() {
             return this.questions[this.currentQuestionIndex];
@@ -456,11 +484,11 @@ function examApp() {
                 current_question: this.currentQuestionIndex,
                 time_remaining: this.remainingTime
             };
-            localStorage.setItem('exam_progress_{{ exam.id }}', JSON.stringify(progress));
+            localStorage.setItem(this.progressKey, JSON.stringify(progress));
         },
         
         loadProgress() {
-            const saved = localStorage.getItem('exam_progress_{{ exam.id }}');
+            const saved = localStorage.getItem(this.progressKey);
             if (saved) {
                 const progress = JSON.parse(saved);
                 progress.answers.forEach(answer => {
@@ -470,7 +498,15 @@ function examApp() {
                         question.selected_option = answer.option_id;
                     }
                 });
-                this.currentQuestionIndex = progress.current_question || 0;
+                if (typeof progress.current_question === 'number' && progress.current_question < this.questions.length) {
+                    this.currentQuestionIndex = progress.current_question;
+                } else {
+                    this.currentQuestionIndex = 0;
+                }
+
+                if (typeof progress.time_remaining === 'number' && progress.time_remaining > 0) {
+                    this.remainingTime = progress.time_remaining;
+                }
             }
         },
         
@@ -481,6 +517,11 @@ function examApp() {
         },
         
         async submitExam() {
+            if (this.isSubmitting) {
+                return;
+            }
+
+            this.isSubmitting = true;
             const answers = this.questions
                 .filter(q => q.selected_option)
                 .map(q => ({
@@ -495,19 +536,45 @@ function examApp() {
                         'Content-Type': 'application/json',
                         'X-CSRFToken': '{{ csrf_token }}'
                     },
+                    credentials: 'same-origin',
                     body: JSON.stringify({
                         answers: answers,
                         time_spent: {{ exam.duration_minutes }} * 60 - this.remainingTime
                     })
                 });
                 
-                if (response.ok) {
-                    localStorage.removeItem('exam_progress_{{ exam.id }}');
-                    window.location.href = '{% url "exam:exam_results" 0 %}'.replace('0', (await response.json()).session_id);
+                const responseText = await response.text();
+                let responseData = null;
+
+                if (responseText) {
+                    try {
+                        responseData = JSON.parse(responseText);
+                    } catch (parseError) {
+                        console.warn('Failed to parse submit response:', parseError, responseText);
+                    }
                 }
+
+                const isRedirectSuccess = response.redirected || [301, 302, 303, 307, 308].includes(response.status);
+                const hasSession = responseData && responseData.session_id;
+
+                if (response.ok || isRedirectSuccess || hasSession) {
+                    if (hasSession) {
+                        console.debug('Exam submitted. Session ID:', responseData.session_id);
+                    }
+                    localStorage.setItem('exam_submit_success', 'Exam submitted successfully!');
+                    localStorage.removeItem(this.progressKey);
+                    const targetUrl = response.redirected ? response.url : '{% url "exam:student_dashboard" %}';
+                    window.location.href = targetUrl;
+                    return;
+                }
+
+                const errorMessage = responseData?.error || `Failed to submit exam (status ${response.status}).`;
+                throw new Error(errorMessage);
             } catch (error) {
                 console.error('Error submitting exam:', error);
-                alert('Error submitting exam. Please try again.');
+                alert(error.message || 'Error submitting exam. Please try again.');
+            } finally {
+                this.isSubmitting = false;
             }
         }
     }
