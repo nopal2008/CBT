@@ -3,7 +3,7 @@ from django.contrib.auth.decorators import login_required,user_passes_test
 from django.contrib import messages
 from django.http import JsonResponse
 from django.utils import timezone
-from django.db.models import Count, Avg, Q,F,Max
+from django.db.models import Count, Avg, Q, F, Max, Min, Sum
 from datetime import timedelta
 from django.db import models
 from .models import Exam, ExamSession, Question, Choice, UserAnswer, QuestionBank, StudentAnswer
@@ -28,7 +28,10 @@ import json
 import csv
 import io
 import xlsxwriter
+import pytz
 from io import BytesIO
+from reportlab.pdfgen import canvas
+from reportlab.lib.pagesizes import letter, landscape
 
 # GET User Data
 User = get_user_model()
@@ -672,16 +675,19 @@ def submit_exam(request, exam_id):
             correct_answers = 0
             
             for answer_data in data.get('answers', []):
-                question = get_object_or_404(Question, id=answer_data['question_id'])
-                selected_choice = get_object_or_404(Choice, id=answer_data['option_id'])
+                question = get_object_or_404(Question, id=answer_data['question_id'], exam=exam)
+                selected_choice = get_object_or_404(Choice, id=answer_data['option_id'], question=question)
                 
                 # Create UserAnswer record
-                user_answer = UserAnswer.objects.create(
+                user_answer, _created = UserAnswer.objects.update_or_create(
                     session=session,
                     question=question,
-                    is_correct=selected_choice.is_correct
+                    defaults={
+                        'is_correct': selected_choice.is_correct,
+                    }
                 )
-                user_answer.selected_choices.add(selected_choice)
+                # Pastikan hanya satu pilihan yang tersimpan untuk soal ini
+                user_answer.selected_choices.set([selected_choice])
                 
                 if selected_choice.is_correct:
                     correct_answers += 1
@@ -698,8 +704,9 @@ def submit_exam(request, exam_id):
             
             return JsonResponse({'session_id': session.id, 'score': session.score})
         
-        return JsonResponse({'error': 'Session not found'}, status=400)@login_required
-# views.py - tambahkan fungsi exam_results
+        return JsonResponse({'error': 'Session not found'}, status=400)
+
+@login_required
 @student_required
 def exam_results(request, session_id):
     session = get_object_or_404(ExamSession, id=session_id, user=request.user)
@@ -835,10 +842,15 @@ def add_question(request):
             question.created_by = request.user
             question.save()
             
-            # Save choices
+            # Save choices with ordering
             choices = choice_formset.save(commit=False)
-            for choice in choices:
+            for deleted in choice_formset.deleted_objects:
+                deleted.delete()
+
+            ordered_choices = sorted(choices, key=lambda c: c.order or 0)
+            for idx, choice in enumerate(ordered_choices, start=1):
                 choice.question = question
+                choice.order = choice.order or idx
                 choice.save()
             
             messages.success(request, 'Question added successfully!')
@@ -866,7 +878,16 @@ def edit_question(request, question_id):
         
         if question_form.is_valid() and choice_formset.is_valid():
             question_form.save()
-            choice_formset.save()
+            choices = choice_formset.save(commit=False)
+            for deleted in choice_formset.deleted_objects:
+                deleted.delete()
+
+            ordered_choices = sorted(choices, key=lambda c: c.order or 0)
+            for idx, choice in enumerate(ordered_choices, start=1):
+                choice.question = question
+                choice.order = choice.order or idx
+                choice.save()
+
             messages.success(request, 'Question updated successfully!')
             return redirect('exam:teacher_questions')
     else:
@@ -1125,6 +1146,293 @@ def admin_stats(request):
     }
     return render(request, 'admin/admin_stats.html', context)
 
+@login_required
+@admin_required
+def admin_exam_monitor(request):
+    """Halaman monitoring semua ujian untuk admin"""
+    base_qs = Exam.objects.select_related('subject', 'created_by')
+    
+    filters = {
+        'status': request.GET.get('status', ''),
+        'subject': request.GET.get('subject', ''),
+        'teacher': request.GET.get('teacher', ''),
+        'start_date': request.GET.get('start_date', ''),
+        'end_date': request.GET.get('end_date', ''),
+        'search': request.GET.get('search', '').strip(),
+        'sort': request.GET.get('sort', '-start_time')
+    }
+    
+    if filters['search']:
+        base_qs = base_qs.filter(
+            Q(title__icontains=filters['search']) |
+            Q(description__icontains=filters['search']) |
+            Q(subject__name__icontains=filters['search']) |
+            Q(created_by__first_name__icontains=filters['search']) |
+            Q(created_by__last_name__icontains=filters['search'])
+        )
+    
+    if filters['status']:
+        base_qs = base_qs.filter(status=filters['status'])
+    
+    if filters['subject']:
+        base_qs = base_qs.filter(subject_id=filters['subject'])
+    
+    if filters['teacher']:
+        base_qs = base_qs.filter(created_by_id=filters['teacher'])
+    
+    if filters['start_date']:
+        base_qs = base_qs.filter(start_time__date__gte=filters['start_date'])
+    
+    if filters['end_date']:
+        base_qs = base_qs.filter(end_time__date__lte=filters['end_date'])
+    
+    if filters['sort']:
+        base_qs = base_qs.order_by(filters['sort'])
+    
+    annotated_qs = base_qs.annotate(
+        total_sessions=Count('sessions', distinct=True),
+        completed_sessions=Count('sessions', filter=Q(sessions__is_completed=True), distinct=True),
+        avg_score=Avg('sessions__score'),
+        pass_count=Count('sessions', filter=Q(sessions__score__gte=F('passing_score')), distinct=True)
+    )
+    
+    export_query = annotated_qs
+    
+    if request.GET.get('export') == 'csv':
+        response = HttpResponse(content_type='text/csv')
+        response['Content-Disposition'] = 'attachment; filename=exam_overview.csv'
+        writer = csv.writer(response)
+        writer.writerow([
+            'Exam Title', 'Subject', 'Teacher', 'Status', 'Start Time', 'End Time',
+            'Participants', 'Completed Attempts', 'Average Score', 'Pass Rate (%)'
+        ])
+        for exam in export_query:
+            total = exam.total_sessions or 0
+            completed = exam.completed_sessions or 0
+            pass_rate = (exam.pass_count or 0) / completed * 100 if completed else 0
+            writer.writerow([
+                exam.title,
+                exam.subject.name if exam.subject else '-',
+                exam.created_by.get_full_name() or exam.created_by.username,
+                exam.get_status_display(),
+                timezone.localtime(exam.start_time).strftime('%Y-%m-%d %H:%M'),
+                timezone.localtime(exam.end_time).strftime('%Y-%m-%d %H:%M'),
+                total,
+                completed,
+                round(exam.avg_score or 0, 2),
+                round(pass_rate, 2)
+            ])
+        return response
+    
+    exams_list = list(annotated_qs)
+    for exam in exams_list:
+        completed = exam.completed_sessions or 0
+        exam.participant_count = exam.total_sessions or 0
+        exam.completed_count = completed
+        exam.avg_score_display = round(exam.avg_score or 0, 2)
+        exam.pass_rate_display = round(((exam.pass_count or 0) / completed) * 100, 2) if completed else 0
+    
+    now = timezone.now()
+    all_exams = Exam.objects.all()
+    completed_sessions = ExamSession.objects.filter(is_completed=True, score__isnull=False)
+    
+    summary = {
+        'total': all_exams.count(),
+        'upcoming': all_exams.filter(start_time__gt=now).count(),
+        'ongoing': all_exams.filter(start_time__lte=now, end_time__gte=now).count(),
+        'completed': all_exams.filter(end_time__lt=now).count(),
+        'avg_score': round(completed_sessions.aggregate(avg=Avg('score'))['avg'] or 0, 2),
+        'pass_rate': round(
+            completed_sessions.filter(score__gte=F('exam__passing_score')).count() / completed_sessions.count() * 100,
+            2
+        ) if completed_sessions.exists() else 0,
+        'active_students': ExamSession.objects.filter(status='in_progress').values('user').distinct().count(),
+        'total_attempts': ExamSession.objects.count()
+    }
+    
+    score_by_subject = (
+        ExamSession.objects.filter(is_completed=True, score__isnull=False)
+        .values('exam__subject__name')
+        .annotate(avg_score=Avg('score'), attempts=Count('id'))
+        .order_by('-avg_score')[:6]
+    )
+    
+    recent_activity = ExamSession.objects.select_related('exam', 'user').order_by('-start_time')[:6]
+    
+    preserved_params = request.GET.copy()
+    preserved_params.pop('export', None)
+    context = {
+        'exams': exams_list,
+        'summary': summary,
+        'filters': filters,
+        'subjects': Subject.objects.order_by('name'),
+        'teachers': CustomUser.objects.filter(user_type='teacher').order_by('first_name', 'last_name'),
+        'recent_activity': recent_activity,
+        'score_by_subject': score_by_subject,
+        'status_choices': Exam.STATUS_CHOICES,
+        'query_string': preserved_params.urlencode(),
+    }
+    
+    return render(request, 'exam/admin_exam_monitor.html', context)
+
+@login_required
+@admin_required
+def admin_exam_detail(request, exam_id):
+    """Detail monitoring exam tertentu"""
+    exam = get_object_or_404(
+        Exam.objects.select_related('subject', 'created_by'),
+        id=exam_id
+    )
+    
+    sessions_qs = exam.sessions.select_related('user', 'user__department').order_by('-start_time')
+    
+    filters = {
+        'department': request.GET.get('department', ''),
+        'result': request.GET.get('result', ''),
+        'search': request.GET.get('search', '').strip(),
+        'score_min': request.GET.get('score_min', ''),
+        'score_max': request.GET.get('score_max', ''),
+        'date_from': request.GET.get('date_from', ''),
+        'date_to': request.GET.get('date_to', '')
+    }
+    
+    if filters['search']:
+        sessions_qs = sessions_qs.filter(
+            Q(user__first_name__icontains=filters['search']) |
+            Q(user__last_name__icontains=filters['search']) |
+            Q(user__username__icontains=filters['search'])
+        )
+    
+    if filters['department']:
+        sessions_qs = sessions_qs.filter(user__department_id=filters['department'])
+    
+    if filters['result'] == 'passed':
+        sessions_qs = sessions_qs.filter(is_completed=True, score__gte=exam.passing_score)
+    elif filters['result'] == 'failed':
+        sessions_qs = sessions_qs.filter(is_completed=True, score__lt=exam.passing_score, score__isnull=False)
+    elif filters['result'] == 'in_progress':
+        sessions_qs = sessions_qs.filter(is_completed=False)
+    elif filters['result'] == 'timeout':
+        sessions_qs = sessions_qs.filter(status='timeout')
+    
+    if filters['score_min']:
+        try:
+            sessions_qs = sessions_qs.filter(score__gte=float(filters['score_min']))
+        except ValueError:
+            pass
+    
+    if filters['score_max']:
+        try:
+            sessions_qs = sessions_qs.filter(score__lte=float(filters['score_max']))
+        except ValueError:
+            pass
+    
+    if filters['date_from']:
+        sessions_qs = sessions_qs.filter(start_time__date__gte=filters['date_from'])
+    
+    if filters['date_to']:
+        sessions_qs = sessions_qs.filter(start_time__date__lte=filters['date_to'])
+    
+    export_sessions = sessions_qs
+    
+    if request.GET.get('export') == 'csv':
+        response = HttpResponse(content_type='text/csv')
+        response['Content-Disposition'] = f'attachment; filename=exam_{exam.id}_sessions.csv'
+        writer = csv.writer(response)
+        writer.writerow([
+            'Student', 'Department', 'Status', 'Score', 'Attempt', 'Start Time', 'End Time', 'Time Spent (min)'
+        ])
+        for session in export_sessions:
+            writer.writerow([
+                session.user.get_full_name() or session.user.username,
+                session.user.department.name if session.user.department else '-',
+                session.get_status_display(),
+                round(session.score or 0, 2) if session.score is not None else '—',
+                session.attempt_number,
+                timezone.localtime(session.start_time).strftime('%Y-%m-%d %H:%M'),
+                timezone.localtime(session.end_time).strftime('%Y-%m-%d %H:%M') if session.end_time else '—',
+                round((session.time_spent or 0) / 60, 2)
+            ])
+        return response
+    
+    paginator = Paginator(sessions_qs, 15)
+    page_number = request.GET.get('page')
+    sessions_page = paginator.get_page(page_number)
+    
+    total_attempts = exam.sessions.count()
+    completed_attempts = exam.sessions.filter(is_completed=True).count()
+    completed_with_scores = exam.sessions.filter(is_completed=True, score__isnull=False)
+    avg_score = completed_with_scores.aggregate(avg=Avg('score'))['avg'] or 0
+    highest_score = completed_with_scores.aggregate(max=Max('score'))['max'] or 0
+    lowest_score = completed_with_scores.aggregate(min=Min('score'))['min'] or 0
+    pass_count = completed_with_scores.filter(score__gte=exam.passing_score).count()
+    pass_rate = pass_count / completed_with_scores.count() * 100 if completed_with_scores.exists() else 0
+    avg_time_spent = completed_with_scores.aggregate(avg=Avg('time_spent'))['avg'] or 0
+    
+    buckets = [
+        ('0 - 50', completed_with_scores.filter(score__lt=50).count()),
+        ('50 - 60', completed_with_scores.filter(score__gte=50, score__lt=60).count()),
+        ('60 - 70', completed_with_scores.filter(score__gte=60, score__lt=70).count()),
+        ('70 - 80', completed_with_scores.filter(score__gte=70, score__lt=80).count()),
+        ('80 - 90', completed_with_scores.filter(score__gte=80, score__lt=90).count()),
+        ('90 - 100', completed_with_scores.filter(score__gte=90).count())
+    ]
+    total_completed = completed_with_scores.count()
+    score_distribution = [
+        {
+            'label': label,
+            'count': count,
+            'percent': round((count / total_completed) * 100, 2) if total_completed else 0
+        }
+        for label, count in buckets
+    ]
+    max_distribution_value = max((b['count'] for b in score_distribution), default=1)
+    
+    department_breakdown = list(
+        exam.sessions
+        .values('user__department__name')
+        .annotate(total=Count('id'))
+        .order_by('-total')
+    )
+    for dept in department_breakdown:
+        dept['percent'] = round((dept['total'] / total_attempts) * 100, 2) if total_attempts else 0
+    
+    recent_activity = exam.sessions.select_related('user').order_by('-start_time')[:8]
+    top_students = completed_with_scores.order_by('-score')[:5]
+    
+    preserved_params = request.GET.copy()
+    preserved_params.pop('page', None)
+    context = {
+        'exam': exam,
+        'sessions': sessions_page,
+        'paginator': paginator,
+        'page_obj': sessions_page,
+        'filters': filters,
+        'departments': Department.objects.order_by('name'),
+        'total_attempts': total_attempts,
+        'completed_attempts': completed_attempts,
+        'avg_score': round(avg_score, 2),
+        'highest_score': round(highest_score, 2) if highest_score else 0,
+        'lowest_score': round(lowest_score, 2) if lowest_score else 0,
+        'pass_rate': round(pass_rate, 2),
+        'avg_time_spent': round((avg_time_spent or 0) / 60, 2),
+        'score_distribution': score_distribution,
+        'max_distribution_value': max_distribution_value or 1,
+        'department_breakdown': department_breakdown,
+        'recent_activity': recent_activity,
+        'top_students': top_students,
+        'result_options': [
+            ('', 'All Results'),
+            ('passed', 'Passed'),
+            ('failed', 'Failed'),
+            ('in_progress', 'In Progress'),
+            ('timeout', 'Timeout')
+        ],
+        'query_string': preserved_params.urlencode(),
+    }
+    
+    return render(request, 'exam/admin_exam_detail.html', context)
+
 # USER Management
 
 @login_required
@@ -1160,13 +1468,107 @@ def user_management_list(request):
     elif status == "inactive":
         users = users.filter(is_active=False)
 
+    export_format = request.GET.get('export')
+    if export_format in ['excel', 'pdf']:
+        export_queryset = users.order_by('username')
+        if export_format == 'excel':
+            return export_users_excel(export_queryset)
+        return export_users_pdf(export_queryset)
+
+    preserved_params = request.GET.copy()
+    preserved_params.pop('export', None)
+
     context = {
         "users": users,
         "selected_role": role,
         "selected_status": status,
+        "filter_query": preserved_params.urlencode(),
     }
  
     return render(request, "admin/user_management.html", context)
+
+
+def export_users_excel(users_queryset):
+    output = BytesIO()
+    workbook = xlsxwriter.Workbook(output, {'in_memory': True})
+    worksheet = workbook.add_worksheet('Users')
+
+    headers = ['Username', 'Email', 'Full Name', 'User Type', 'Status', 'Joined']
+    header_format = workbook.add_format({'bold': True, 'bg_color': '#F3F4F6'})
+
+    for col, header in enumerate(headers):
+        worksheet.write(0, col, header, header_format)
+
+    for row, user in enumerate(users_queryset, start=1):
+        worksheet.write(row, 0, user.username)
+        worksheet.write(row, 1, user.email or '-')
+        worksheet.write(row, 2, user.get_full_name() or user.username)
+        worksheet.write(row, 3, user.get_user_type_display())
+        worksheet.write(row, 4, 'Active' if user.is_active else 'Inactive')
+        worksheet.write(row, 5, user.date_joined.strftime('%Y-%m-%d %H:%M'))
+
+    workbook.close()
+    output.seek(0)
+
+    response = HttpResponse(
+        output.read(),
+        content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+    )
+    response['Content-Disposition'] = 'attachment; filename="users.xlsx"'
+    return response
+
+
+def export_users_pdf(users_queryset):
+    buffer = BytesIO()
+    pdf = canvas.Canvas(buffer, pagesize=landscape(letter))
+    width, height = landscape(letter)
+
+    pdf.setFont('Helvetica-Bold', 16)
+    pdf.drawString(40, height - 40, 'User Report')
+    pdf.setFont('Helvetica', 10)
+    pdf.drawString(40, height - 60, f'Total users: {users_queryset.count()}')
+
+    headers = ['Username', 'Email', 'Full Name', 'Type', 'Status', 'Joined']
+    x_positions = [40, 150, 310, 470, 540, 620]
+
+    def draw_table_header(y_pos):
+        pdf.setFont('Helvetica-Bold', 10)
+        for header, x in zip(headers, x_positions):
+            pdf.drawString(x, y_pos, header)
+        pdf.line(30, y_pos - 5, width - 30, y_pos - 5)
+
+    y = height - 90
+    draw_table_header(y)
+    y -= 20
+
+    pdf.setFont('Helvetica', 9)
+    for user in users_queryset:
+        if y < 40:
+            pdf.showPage()
+            y = height - 60
+            draw_table_header(y)
+            y -= 20
+            pdf.setFont('Helvetica', 9)
+
+        values = [
+            user.username,
+            user.email or '-',
+            user.get_full_name() or user.username,
+            user.get_user_type_display(),
+            'Active' if user.is_active else 'Inactive',
+            user.date_joined.strftime('%Y-%m-%d')
+        ]
+
+        for value, x in zip(values, x_positions):
+            pdf.drawString(x, y, str(value))
+        y -= 18
+
+    pdf.save()
+    buffer.seek(0)
+
+    response = HttpResponse(buffer.getvalue(), content_type='application/pdf')
+    response['Content-Disposition'] = 'attachment; filename="users.pdf"'
+    return response
 
 
 
@@ -1429,18 +1831,52 @@ def download_question_bank_template(request):
     # Write header
     writer.writerow([
         'Question Text', 'Question Type', 'Points', 'Difficulty', 
-        'Correct Answer', 'Option A', 'Option B', 'Option C', 'Option D'
+        'Correct Answer', 'Option A', 'Option B', 'Option C', 'Option D', 'Option E'
     ])
     # Write example rows
     writer.writerow([
         'What is 2+2?', 'multiple_choice', '5', 'easy', 'A', 
-        '4', '5', '6', '7'
+        '4', '5', '6', '7', ''
     ])
     writer.writerow([
         'Python is interpreted language', 'true_false', '3', 'easy', 'A',
-        'True', 'False', '', ''
+        'True', 'False', '', '', ''
     ])
     
+    return response
+
+
+@login_required
+@teacher_required
+def download_question_template(request):
+    """Download CSV template for bulk question upload (supports options A-E)."""
+    response = HttpResponse(content_type='text/csv')
+    response['Content-Disposition'] = 'attachment; filename=\"question_template.csv\"'
+
+    writer = csv.writer(response)
+    writer.writerow([
+        'Question Text', 'Question Type', 'Points', 'Difficulty',
+        'Correct Answer', 'Option A', 'Option B', 'Option C', 'Option D', 'Option E'
+    ])
+
+    examples = [
+        [
+            'What is 2+2?', 'multiple_choice', '5', 'easy', 'A',
+            '4', '5', '6', '7', ''
+        ],
+        [
+            'Hitung limit berikut: ( (x^2 - 4) / (x - 2) ) saat x -> 2', 'multiple_choice', '5', 'hard', 'A',
+            '4', '2', '0', '∞', ''
+        ],
+        [
+            'Sederhanakan ekspresi:  (a^2*b^3) / (a*b^2)  *  ( (a^3)/(b) )', 'multiple_choice', '5', 'hard', 'C',
+            'a^3*b^2', 'a^4*b', 'a^5*b^0', 'a^5/b', ''
+        ],
+    ]
+
+    for row in examples:
+        writer.writerow([smart_str(field) for field in row])
+
     return response
 
 @login_required
@@ -1525,7 +1961,8 @@ def bulk_upload_questions(request):
 
                         # ✅ MULTIPLE CHOICE (pilihan tidak di-strip)
                         if question_type == 'multiple_choice' and len(row) >= 9:
-                            choices = row[5:9]
+                            # Pad to 5 options (A-E)
+                            choices = (row[5:10] + [''] * 5)[:5]
                             for i, choice in enumerate(choices):
                                 if choice:
                                     Choice.objects.create(
@@ -1653,7 +2090,7 @@ def delete_exam(request, exam_id):
         exam_title = exam.title
         exam.delete()
         messages.success(request, f'✅ Exam "{exam_title}" deleted successfully!')
-        return redirect('exam:teacher_dashboard')
+        return redirect('exam:exam_list')
     
     # Jika bukan POST, redirect ke detail
     return redirect('exam:exam_detail', exam_id=exam.id)
