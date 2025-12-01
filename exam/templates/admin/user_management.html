@@ -5,6 +5,9 @@
 
 {% block extrahead %}
 {{ block.super }}
+<link rel="stylesheet" href="https://cdn.datatables.net/1.13.6/css/jquery.dataTables.min.css">
+<script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
+<script src="https://cdn.datatables.net/1.13.6/js/jquery.dataTables.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 {% endblock %}
 
@@ -13,8 +16,9 @@
 <div class="user-management max-w-7xl mx-auto space-y-8">
 
     <!-- FILTER -->
-    <form method="get" class="bg-white shadow rounded-2xl p-6 flex flex-wrap items-end gap-4">
+<form method="get" class="bg-white shadow rounded-2xl p-6 flex flex-wrap items-end gap-4">
 
+    <div class="flex flex-wrap items-end gap-4 flex-1">
         <div class="flex flex-col">
             <label class="text-sm font-semibold text-gray-600 mb-1">Role</label>
             <select name="role" class="border rounded-lg px-3 py-2 text-sm">
@@ -43,16 +47,27 @@
            class="px-4 py-2 bg-gray-200 hover:bg-gray-300 text-gray-700 rounded-lg text-sm font-semibold">
             Reset
         </a>
+    </div>
 
+    <div class="ml-auto flex items-end gap-2">
+        <a href="?{% if filter_query %}{{ filter_query }}&{% endif %}export=excel"
+           class="inline-flex items-center px-4 py-2 bg-green-600 hover:bg-green-700 text-white text-sm font-semibold rounded-lg">
+            <i class="fas fa-file-excel mr-2 text-sm"></i> Excel
+        </a>
+        <a href="?{% if filter_query %}{{ filter_query }}&{% endif %}export=pdf"
+           class="inline-flex items-center px-4 py-2 bg-rose-600 hover:bg-rose-700 text-white text-sm font-semibold rounded-lg">
+            <i class="fas fa-file-pdf mr-2 text-sm"></i> PDF
+        </a>
         <a href="{% url 'exam:admin_user_create' %}"
            class="inline-flex items-center px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-semibold rounded-lg">
             <i class="fas fa-user-plus mr-2 text-sm"></i> Create User
         </a>
+    </div>
 
-    </form>
+</form>
 
     <!-- TABLE -->
-    <div class="bg-white shadow rounded-2xl overflow-hidden">
+<div class="bg-white shadow rounded-2xl overflow-hidden">
 
         <div class="flex justify-between items-center border-b px-6 py-4">
             <h2 class="text-xl font-semibold text-gray-800">User Management</h2>
@@ -65,7 +80,7 @@
         </div>
 
         <div class="overflow-x-auto">
-            <table class="min-w-full text-sm">
+            <table id="userTable" class="min-w-full text-sm">
                 <thead class="bg-gray-100 text-gray-700">
                     <tr>
                         <th class="p-3"><input type="checkbox" id="selectAll"></th>
@@ -166,16 +181,30 @@ document.addEventListener("DOMContentLoaded", function() {
     console.log("✅ SweetAlert2 & Script Ready");
     
     // ========================================
-    // Search Functionality
+    // DataTable Initialization + Search binding
     // ========================================
+    let userDataTable = null;
+    if (window.jQuery && $.fn.DataTable && $('#userTable').length) {
+        userDataTable = $('#userTable').DataTable({
+            pageLength: 10,
+            lengthChange: false,
+            order: [],
+            dom: 'lrtip'
+        });
+    }
+    
     const searchInput = document.getElementById("searchInput");
     if (searchInput) {
-        searchInput.addEventListener("keyup", function() {
-            const filter = this.value.toLowerCase();
-            document.querySelectorAll("tbody tr").forEach(function(row) {
-                const text = row.textContent.toLowerCase();
-                row.style.display = text.includes(filter) ? "" : "none";
-            });
+        searchInput.addEventListener("input", function() {
+            if (userDataTable) {
+                userDataTable.search(this.value).draw();
+            } else {
+                const filter = this.value.toLowerCase();
+                document.querySelectorAll("#userTable tbody tr").forEach(function(row) {
+                    const text = row.textContent.toLowerCase();
+                    row.style.display = text.includes(filter) ? "" : "none";
+                });
+            }
         });
     }
     
@@ -183,11 +212,9 @@ document.addEventListener("DOMContentLoaded", function() {
     // Select All Checkbox
     // ========================================
     const selectAllCheckbox = document.getElementById("selectAll");
-    const userCheckboxes = document.querySelectorAll(".user-checkbox");
-    
     if (selectAllCheckbox) {
         selectAllCheckbox.addEventListener("change", function() {
-            userCheckboxes.forEach(function(checkbox) {
+            document.querySelectorAll(".user-checkbox").forEach(function(checkbox) {
                 checkbox.checked = selectAllCheckbox.checked;
             });
         });
