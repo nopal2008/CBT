@@ -1,4 +1,6 @@
 from django import forms
+from django.utils import timezone
+import pytz
 from .models import Question, Choice, Exam, QuestionBank, Subject, CustomUser
 from django.contrib.auth import get_user_model
 from django.contrib.auth.forms import UserCreationForm
@@ -49,7 +51,7 @@ class ChoiceForm(forms.ModelForm):
 
 
 ChoiceFormSet = forms.inlineformset_factory(
-    Question, Choice, form=ChoiceForm, extra=4, can_delete=True, max_num=6
+    Question, Choice, form=ChoiceForm, extra=5, can_delete=True, max_num=5
 )
 
 class BulkQuestionForm(forms.Form):
@@ -207,9 +209,28 @@ class ExamForm(forms.ModelForm):
         
     def clean(self):
         cleaned_data = super().clean()
-        start_time = cleaned_data.get('start_time')
-        end_time = cleaned_data.get('end_time')
-        result_publish_time = cleaned_data.get('result_publish_time')
+        tz = pytz.timezone('Asia/Jakarta')
+
+        def to_jakarta(dt):
+            """
+            Interpret user input as Asia/Jakarta local time.
+            Django may already convert to the project TIME_ZONE (UTC), so we
+            strip tzinfo and re-localize to Jakarta to avoid double shifting.
+            """
+            if not dt:
+                return dt
+            if dt.tzinfo == tz:
+                return dt
+            naive = dt.replace(tzinfo=None)
+            return tz.localize(naive)
+
+        start_time = to_jakarta(cleaned_data.get('start_time'))
+        end_time = to_jakarta(cleaned_data.get('end_time'))
+        result_publish_time = to_jakarta(cleaned_data.get('result_publish_time'))
+
+        cleaned_data['start_time'] = start_time
+        cleaned_data['end_time'] = end_time
+        cleaned_data['result_publish_time'] = result_publish_time
         
         # Validasi: End time harus setelah start time
         if start_time and end_time:
