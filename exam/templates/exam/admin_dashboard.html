@@ -1,196 +1,162 @@
-<!DOCTYPE html>
-<html lang="id">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Admin Dashboard - CBT System</title>
-    <script src="https://cdn.tailwindcss.com"></script>
-    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
-</head>
-<body class="bg-gray-50">
-    <!-- Navigation -->
-    <nav class="bg-purple-600 text-white shadow-lg">
-        <div class="container mx-auto px-4">
-            <div class="flex justify-between items-center py-4">
-                <div class="flex items-center space-x-3">
-                    <i class="fas fa-crown text-2xl"></i>
-                    <h1 class="text-xl font-bold">CBT System - Administrator</h1>
-                </div>
-                <div class="flex items-center space-x-4">
-                    <span class="bg-purple-500 px-3 py-1 rounded-full text-sm">
-                        {{ user.get_full_name|default:user.username }}
-                    </span>
-                    <!-- BENAR - gunakan form POST -->
-                    <form method="post" action="{% url 'exam:logout' %}" id="logout-form" class="bg-red-500 hover:bg-red-600 px-4 py-2 rounded-lg transition duration-200">
-                        {% csrf_token %}
-                        <button type="submit" class="btn-logout">
-                            <i class="fas fa-sign-out-alt"></i> Logout
-                        </button>
-                    </form>
-                </div>
-            </div>
-        </div>
-    </nav>
+{% extends 'base.html' %}
 
-    <!-- Main Content -->
-    <div class="container mx-auto px-4 py-8">
-        <!-- Welcome Section -->
-        <div class="bg-gradient-to-r from-purple-500 to-pink-600 rounded-2xl p-8 text-white mb-8 shadow-lg">
-            <div class="flex justify-between items-center">
-                <div>
-                    <h1 class="text-3xl font-bold mb-2">System Overview 👑</h1>
-                    <p class="text-purple-100 text-lg">Manage the entire CBT system and monitor performance.</p>
-                </div>
-                <div class="text-right">
-                    <div class="bg-white bg-opacity-20 rounded-lg p-4 inline-block">
-                        <p class="text-sm">System Status</p>
-                        <p class="text-2xl font-bold">Online</p>
-                        <p class="text-xs">All systems operational</p>
-                    </div>
-                </div>
-            </div>
-        </div>
+{% block title %}Admin Dashboard · CBT System{% endblock %}
 
-        <!-- Statistics Grid -->
-        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-            <div class="bg-white rounded-2xl p-6 shadow-lg">
-                <div class="flex items-center justify-between">
-                    <div>
-                        <p class="text-sm text-gray-600">Total Users</p>
-                        <p class="text-3xl font-bold text-purple-600">{{ total_users }}</p>
-                    </div>
-                    <i class="fas fa-users text-3xl text-purple-400"></i>
-                </div>
+{% block content %}
+<div class="space-y-8">
+    <!-- Hero -->
+    <div class="bg-gradient-to-r from-purple-600 to-pink-600 rounded-3xl text-white p-8 shadow-xl">
+        <div class="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-6">
+            <div>
+                <p class="text-sm uppercase tracking-wide text-purple-100 font-semibold mb-2">Admin Overview</p>
+                <h1 class="text-3xl font-bold mb-2">Welcome back, {{ request.user.get_full_name|default:request.user.username }} 👑</h1>
+                <p class="text-purple-100 max-w-2xl">Pantau performa sistem CBT, aktivitas guru dan siswa, serta kelola sumber daya penting langsung dari dashboard ini.</p>
             </div>
-            <div class="bg-white rounded-2xl p-6 shadow-lg">
-                <div class="flex items-center justify-between">
-                    <div>
-                        <p class="text-sm text-gray-600">Students</p>
-                        <p class="text-3xl font-bold text-blue-600">{{ total_students }}</p>
-                    </div>
-                    <i class="fas fa-user-graduate text-3xl text-blue-400"></i>
-                </div>
-            </div>
-            <div class="bg-white rounded-2xl p-6 shadow-lg">
-                <div class="flex items-center justify-between">
-                    <div>
-                        <p class="text-sm text-gray-600">Teachers</p>
-                        <p class="text-3xl font-bold text-green-600">{{ total_teachers }}</p>
-                    </div>
-                    <i class="fas fa-chalkboard-teacher text-3xl text-green-400"></i>
-                </div>
-            </div>
-            <div class="bg-white rounded-2xl p-6 shadow-lg">
-                <div class="flex items-center justify-between">
-                    <div>
-                        <p class="text-sm text-gray-600">Active Exams</p>
-                        <p class="text-3xl font-bold text-orange-600">{{ active_sessions }}</p>
-                    </div>
-                    <i class="fas fa-running text-3xl text-orange-400"></i>
-                </div>
-            </div>
-        </div>
-
-        <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
-            <!-- Recent Exams -->
-            <div class="bg-white rounded-2xl shadow-lg p-6">
-                <h2 class="text-2xl font-bold text-gray-800 mb-6">Recent Exams</h2>
-                {% if recent_exams %}
-                <div class="space-y-4">
-                    {% for exam in recent_exams %}
-                    <div class="flex items-center justify-between p-4 border border-gray-200 rounded-lg">
-                        <div class="flex items-center space-x-3">
-                            <div class="w-10 h-10 bg-blue-100 rounded-lg flex items-center justify-center">
-                                <i class="fas fa-file-alt text-blue-600"></i>
-                            </div>
-                            <div>
-                                <p class="font-semibold text-gray-800">{{ exam.title }}</p>
-                                <p class="text-sm text-gray-600">{{ exam.subject.name }} • {{ exam.created_by.username }}</p>
-                            </div>
-                        </div>
-                        <span class="{% if exam.status == 'published' %}bg-green-100 text-green-800{% else %}bg-yellow-100 text-yellow-800{% endif %} px-2 py-1 rounded text-xs">
-                            {{ exam.get_status_display }}
-                        </span>
-                    </div>
-                    {% endfor %}
-                </div>
-                {% else %}
-                <div class="text-center py-8 text-gray-500">
-                    <i class="fas fa-file-alt text-4xl mb-4 text-gray-300"></i>
-                    <p>No exams created yet</p>
-                </div>
-                {% endif %}
-            </div>
-
-            <!-- System Logs -->
-            <div class="bg-white rounded-2xl shadow-lg p-6">
-                <h2 class="text-2xl font-bold text-gray-800 mb-6">System Logs</h2>
-                {% if system_logs %}
-                <div class="space-y-3">
-                    {% for log in system_logs %}
-                    <div class="flex items-center space-x-3 p-3 bg-gray-50 rounded-lg">
-                        <div class="w-8 h-8 rounded-full flex items-center justify-center 
-                            {% if log.level == 'error' %}bg-red-100 text-red-600
-                            {% elif log.level == 'warning' %}bg-yellow-100 text-yellow-600
-                            {% else %}bg-blue-100 text-blue-600{% endif %}">
-                            <i class="fas 
-                                {% if log.level == 'error' %}fa-exclamation-circle
-                                {% elif log.level == 'warning' %}fa-exclamation-triangle
-                                {% else %}fa-info-circle{% endif %} text-sm"></i>
-                        </div>
-                        <div class="flex-1">
-                            <p class="text-sm font-medium text-gray-800">{{ log.action }}</p>
-                            <p class="text-xs text-gray-600">
-                                {% if log.user %}{{ log.user.username }} • {% endif %}
-                                {{ log.created_at|timesince }} ago
-                            </p>
-                        </div>
-                    </div>
-                    {% endfor %}
-                </div>
-                {% else %}
-                <div class="text-center py-8 text-gray-500">
-                    <i class="fas fa-clipboard-list text-4xl mb-4 text-gray-300"></i>
-                    <p>No system logs</p>
-                </div>
-                {% endif %}
-            </div>
-        </div>
-
-        <!-- Quick Actions -->
-        <div class="bg-white rounded-2xl shadow-lg p-6 mt-8">
-            <h2 class="text-2xl font-bold text-gray-800 mb-6">Quick Actions</h2>
-            <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
-                <a href="/panel/" class="bg-purple-600 text-white p-4 rounded-lg text-center hover:bg-purple-700 transition duration-200">
-                    <i class="fas fa-cog text-2xl mb-2"></i>
-                    <p class="font-semibold">Admin Panel</p>
-                </a>
-                <!-- Di bagian Quick Actions, tambahkan: -->
-                <a href="{% url 'exam:token_management' %}" class="bg-indigo-600 text-white p-4 rounded-lg text-center hover:bg-indigo-700 transition duration-200">
-                    <i class="fas fa-key text-2xl mb-2"></i>
-                    <p class="font-semibold">Token Management</p>
-                </a>
-                <a href="{% url 'exam:admin_user_list' %}" class="bg-blue-600 text-white p-4 rounded-lg text-center hover:bg-blue-700 transition duration-200">
-                    <i class="fas fa-users text-2xl mb-2"></i>
-                    <p class="font-semibold">User Management</p>
-                </a>
-                <a href="{% url 'exam:admin_stats' %}" class="bg-green-600 text-white p-4 rounded-lg text-center hover:bg-green-700 transition duration-200">
-                    <i class="fas fa-chart-bar text-2xl mb-2"></i>
-                    <p class="font-semibold">Statistics</p>
-                </a>
-                <button class="bg-red-600 text-white p-4 rounded-lg text-center hover:bg-red-700 transition duration-200">
-                    <i class="fas fa-database text-2xl mb-2"></i>
-                    <p class="font-semibold">Backup System</p>
-                </button>
+            <div class="bg-white bg-opacity-15 rounded-2xl px-6 py-4 text-center">
+                <p class="text-sm text-purple-100">System Status</p>
+                <p class="text-3xl font-extrabold">Online</p>
+                <p class="text-xs text-purple-100">All systems operational</p>
             </div>
         </div>
     </div>
 
-    <!-- Footer -->
-    <footer class="bg-gray-800 text-white py-6 mt-12">
-        <div class="container mx-auto px-4 text-center">
-            <p>&copy; 2024 CBT System. Admin Portal - Full system control.</p>
+    <!-- Stats -->
+    <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-6">
+        <div class="bg-white rounded-2xl p-6 shadow-lg border border-gray-100">
+            <div class="flex items-center justify-between">
+                <div>
+                    <p class="text-sm text-gray-500">Total Users</p>
+                    <p class="text-3xl font-bold text-purple-600">{{ total_users }}</p>
+                </div>
+                <span class="w-12 h-12 rounded-2xl bg-purple-100 flex items-center justify-center text-purple-500">
+                    <i class="fas fa-users text-xl"></i>
+                </span>
+            </div>
         </div>
-    </footer>
-</body>
-</html>
+        <div class="bg-white rounded-2xl p-6 shadow-lg border border-gray-100">
+            <div class="flex items-center justify-between">
+                <div>
+                    <p class="text-sm text-gray-500">Students</p>
+                    <p class="text-3xl font-bold text-blue-600">{{ total_students }}</p>
+                </div>
+                <span class="w-12 h-12 rounded-2xl bg-blue-100 flex items-center justify-center text-blue-500">
+                    <i class="fas fa-user-graduate text-xl"></i>
+                </span>
+            </div>
+        </div>
+        <div class="bg-white rounded-2xl p-6 shadow-lg border border-gray-100">
+            <div class="flex items-center justify-between">
+                <div>
+                    <p class="text-sm text-gray-500">Teachers</p>
+                    <p class="text-3xl font-bold text-green-600">{{ total_teachers }}</p>
+                </div>
+                <span class="w-12 h-12 rounded-2xl bg-green-100 flex items-center justify-center text-green-500">
+                    <i class="fas fa-chalkboard-teacher text-xl"></i>
+                </span>
+            </div>
+        </div>
+        <div class="bg-white rounded-2xl p-6 shadow-lg border border-gray-100">
+            <div class="flex items-center justify-between">
+                <div>
+                    <p class="text-sm text-gray-500">Active Exams</p>
+                    <p class="text-3xl font-bold text-orange-500">{{ active_sessions }}</p>
+                </div>
+                <span class="w-12 h-12 rounded-2xl bg-orange-100 flex items-center justify-center text-orange-500">
+                    <i class="fas fa-running text-xl"></i>
+                </span>
+            </div>
+        </div>
+    </div>
+
+    <!-- Recent activity + logs -->
+    <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
+        <div class="bg-white rounded-2xl shadow-lg border border-gray-100 p-6">
+            <div class="flex items-center justify-between mb-4">
+                <h2 class="text-xl font-bold text-gray-800">Recent Exams</h2>
+                <span class="text-sm text-gray-500">{{ recent_exams|length }} terbaru</span>
+            </div>
+            {% if recent_exams %}
+                <div class="space-y-4">
+                    {% for exam in recent_exams %}
+                        <div class="flex items-center justify-between p-4 rounded-2xl border border-gray-100 hover:shadow-sm transition">
+                            <div>
+                                <p class="font-semibold text-gray-900">{{ exam.title }}</p>
+                                <p class="text-xs text-gray-500">
+                                    {{ exam.subject.name|default:"No subject" }} · {{ exam.start_time|date:"M d, H:i" }}
+                                </p>
+                            </div>
+                            <span class="text-sm text-gray-500">by {{ exam.created_by.get_full_name|default:exam.created_by.username }}</span>
+                        </div>
+                    {% endfor %}
+                </div>
+            {% else %}
+                <div class="text-center py-8 text-gray-500">Belum ada ujian terbaru.</div>
+            {% endif %}
+        </div>
+        <div class="bg-white rounded-2xl shadow-lg border border-gray-100 p-6">
+            <div class="flex items-center justify-between mb-4">
+                <h2 class="text-xl font-bold text-gray-800">System Logs</h2>
+                <span class="text-sm text-gray-500">{{ system_logs|length }} entries</span>
+            </div>
+            {% if system_logs %}
+                <div class="space-y-3">
+                    {% for log in system_logs %}
+                        <div class="flex items-center space-x-3 p-3 rounded-2xl border border-gray-100">
+                            <span class="w-10 h-10 rounded-2xl flex items-center justify-center
+                                {% if log.level == 'error' %}bg-red-100 text-red-600
+                                {% elif log.level == 'warning' %}bg-yellow-100 text-yellow-600
+                                {% else %}bg-blue-100 text-blue-600{% endif %}">
+                                <i class="fas
+                                    {% if log.level == 'error' %}fa-exclamation-circle
+                                    {% elif log.level == 'warning' %}fa-exclamation-triangle
+                                    {% else %}fa-info-circle{% endif %}"></i>
+                            </span>
+                            <div class="flex-1">
+                                <p class="text-sm font-semibold text-gray-800">{{ log.action }}</p>
+                                <p class="text-xs text-gray-500">
+                                    {% if log.user %}{{ log.user.username }} · {% endif %}
+                                    {{ log.created_at|timesince }} ago
+                                </p>
+                            </div>
+                        </div>
+                    {% endfor %}
+                </div>
+            {% else %}
+                <div class="text-center py-8 text-gray-500">Belum ada log terbaru.</div>
+            {% endif %}
+        </div>
+    </div>
+
+    <!-- Quick actions -->
+    <div class="bg-white rounded-2xl shadow-lg border border-gray-100 p-6">
+        <div class="flex items-center justify-between mb-6">
+            <div>
+                <h2 class="text-xl font-bold text-gray-800">Quick Actions</h2>
+                <p class="text-sm text-gray-500">Tindakan cepat untuk administrasi sistem.</p>
+            </div>
+        </div>
+        <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
+            {% comment %} <a href="{% url 'exam:admin_panel' %}" class="bg-purple-600 text-white rounded-2xl p-4 text-center hover:bg-purple-700 transition">
+                <i class="fas fa-cog text-2xl mb-2"></i>
+                <p class="font-semibold">Admin Panel</p>
+            </a> {% endcomment %}
+            <a href="{% url 'exam:token_management' %}" class="bg-indigo-600 text-white rounded-2xl p-4 text-center hover:bg-indigo-700 transition">
+                <i class="fas fa-key text-2xl mb-2"></i>
+                <p class="font-semibold">Tokens</p>
+            </a>
+            <a href="{% url 'exam:admin_user_list' %}" class="bg-blue-600 text-white rounded-2xl p-4 text-center hover:bg-blue-700 transition">
+                <i class="fas fa-users text-2xl mb-2"></i>
+                <p class="font-semibold">Users</p>
+            </a>
+            <a href="{% url 'exam:admin_exam_monitor' %}" class="bg-green-600 text-white rounded-2xl p-4 text-center hover:bg-green-700 transition">
+                <i class="fas fa-clipboard-check text-2xl mb-2"></i>
+                <p class="font-semibold">Exams</p>
+            </a>
+            <a href="{% url 'exam:admin_stats' %}" class="bg-rose-600 text-white rounded-2xl p-4 text-center hover:bg-rose-700 transition">
+                <i class="fas fa-chart-bar text-2xl mb-2"></i>
+                <p class="font-semibold">Statistics</p>
+            </a>
+        </div>
+    </div>
+</div>
+{% endblock %}
