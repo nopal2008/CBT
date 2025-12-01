@@ -16,8 +16,10 @@ urlpatterns = [
     # ===== STUDENT ROUTES =====
     path('student/my-exams/', views.my_exams, name='my_exams'),
     path('student/exam/<int:exam_id>/', views.take_exam, name='take_exam'),
+
     path('exam/<int:exam_id>/take/', views.take_exam, name='take_exam'),
-    path('exam/<int:exam_id>/submit/', views.submit_exam, name='submit_exam'),
+    path('exams/<int:exam_id>/submit/', views.submit_exam, name='submit_exam'),
+
     path('results/<int:session_id>/', views.exam_results, name='exam_results'),
     path('student/dashboard/', views.student_dashboard, name='student_dashboard'),
     path('student/exam-token/', views.exam_token_access, name='exam_token_access'),
@@ -41,6 +43,7 @@ urlpatterns = [
     path('teacher/questions/<int:question_id>/edit/', views.edit_question, name='edit_question'),
     path('teacher/questions/<int:question_id>/delete/', views.delete_question, name='delete_question'),
     path('teacher/questions/bulk-upload/', views.bulk_upload_questions, name='bulk_upload_questions'),
+    path('teacher/questions/sample-csv/', views.download_question_template, name='download_question_template'),
     path('teacher/question-banks/create/', views.create_question_bank, name='create_question_bank'),
     path('teacher/question-banks/<int:bank_id>/', views.question_bank_detail, name='question_bank_detail'),
 
@@ -55,12 +58,13 @@ urlpatterns = [
     path('admin/dashboard/', views.admin_dashboard, name='admin_dashboard'),
     path('stats/', views.admin_stats, name='admin_stats'),
     path('admin/tokens/', views.token_management, name='token_management'),
+    path('admin/exams/', views.admin_exam_monitor, name='admin_exam_monitor'),
+    path('admin/exams/<int:exam_id>/', views.admin_exam_detail, name='admin_exam_detail'),
     path('api/validate-token/', views.validate_exam_token, name='validate_exam_token'),
     path('api/active-tokens/', views.get_active_tokens, name='get_active_tokens'),
     path('admin/tokens/rotate/', views.auto_rotate_tokens, name='auto_rotate_tokens'),
     
    # ========== ADMIN USER MANAGEMENT ==========
-    path('admin/panel/', views.admin_panel, name='admin_panel'),
     path('admin/users/', views.user_management_list, name='admin_user_list'),
     path('admin/users/create/', views.admin_user_create, name='admin_user_create'),
     path('admin/users/<int:user_id>/edit/', views.admin_user_edit, name='admin_user_edit'),
