@@ -89,6 +89,12 @@
         <i class="fas fa-tachometer-alt w-5"></i><span>Dashboard</span>
       </a>
 
+      <a href="{% url 'exam:admin_exam_monitor' %}"
+         class="flex items-center space-x-3 text-white py-3 px-4 rounded-lg hover:bg-blue-700 transition duration-200
+         {% if request.resolver_match.url_name == 'admin_exam_monitor' or request.resolver_match.url_name == 'admin_exam_detail' %}bg-blue-700{% endif %}">
+        <i class="fas fa-clipboard-check w-5"></i><span>Exams</span>
+      </a>
+
       <a href="{% url 'exam:admin_user_list' %}"
          class="flex items-center space-x-3 text-white py-3 px-4 rounded-lg hover:bg-blue-700 transition duration-200
          {% if 'user' in request.resolver_match.url_name %}bg-blue-700{% endif %}">
